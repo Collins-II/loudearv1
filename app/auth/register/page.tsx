@@ -1,0 +1,21 @@
+import { getCurrentUser } from "@/actions/getCurrentUser";
+import { RegisterForm } from "@/components/auth/auth-form"
+import { redirect } from "next/navigation";
+
+const Register = async () => {
+
+  const user = await getCurrentUser();
+  if (!user?.isNewUser) {
+    redirect("/")
+  }
+
+  return (
+    <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
+      <div className="w-full max-w-sm md:max-w-3xl pt-16">
+        <RegisterForm user={ user as any } />
+      </div>
+    </div>
+  )
+}
+
+export default Register;

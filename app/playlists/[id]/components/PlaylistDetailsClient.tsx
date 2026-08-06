@@ -1,0 +1,166 @@
+// app/playlists/[id]/PlaylistDetailsClient.tsx
+"use client";
+
+import { motion } from "framer-motion";
+import { TopPlaylist } from "@/components/playlists/TopPlaylist";
+import { Playlist } from "../../page";
+import Image from "next/image";
+import { LazySpotifyIframe } from "./LazySpotifyIframe";
+import ThemedHeading from "@/components/themed-heading";
+
+interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: string;
+}
+
+export interface PlaylistDetail {
+  id: string;
+  title: string;
+  curator: string;
+  image: string;
+  description?: string;
+  tracks: Track[];
+  genre: string;
+}
+
+interface Props {
+  playlist: any;
+  relatedPlaylist: Playlist[];
+}
+
+export default function PlaylistDetailsClient({
+  playlist,
+  relatedPlaylist,
+}: Props) {
+
+  if (!playlist)
+    return (
+      <div className="flex items-center justify-center h-screen text-xl font-bold dark:text-white">
+        Playlist not found
+      </div>
+    );
+
+  return (
+    <div
+      className="
+        min-h-screen w-full 
+        bg-gradient-to-b 
+        from-white via-gray-50 to-gray-100 
+        dark:from-[#0b0b0d] dark:via-[#0f0f13] dark:to-[#131318]
+        text-gray-900 dark:text-gray-100
+      "
+    >
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-10 px-4 md:px-8 lg:px-12 py-16">
+
+        {/* LEFT SIDE */}
+        <div className="lg:col-span-2 pt-8">
+
+          {/* AD SPACE */}
+          <div className="
+            bg-gray-200 dark:bg-gray-800/40 
+            backdrop-blur-md border border-gray-300/40 dark:border-gray-700/40
+            h-20 flex items-center justify-center rounded-lg mb-8 
+            text-gray-600 dark:text-gray-400
+          ">
+            Advertisement
+          </div>
+
+          {/* HEADER */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="relative flex flex-col md:flex-row items-center md:items-end gap-6"
+          >
+            <div className="
+              relative w-full h-48 md:w-64 md:h-64 
+              rounded-xl overflow-hidden 
+              shadow-xl border 
+              border-gray-300 dark:border-gray-700
+            ">
+              <Image
+                src={playlist.image}
+                alt={playlist.title}
+                fill
+                className="object-cover w-full h-full"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 text-center md:text-left">
+              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">
+                {playlist.title}
+              </h1>
+
+              <p className="text-gray-600 dark:text-gray-400">
+                Curated by{" "}
+                <span className="text-2xl font-medium text-black dark:text-white capitalize">
+                  {playlist.curator}
+                </span>
+              </p>
+
+              {playlist.description && (
+                <p className="text-gray-500 dark:text-gray-400">
+                  {playlist.description}
+                </p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* SPOTIFY EMBED */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="mt-8"
+          >
+            <LazySpotifyIframe
+              playlistId={playlist.id?.toString()}
+              title={`${playlist.curator} - ${playlist.title}`}
+            />
+          </motion.div>
+        </div>
+
+        {/* RIGHT SIDE */}
+        <aside className="space-y-8 mt-6">
+
+          {/* AD SPACE */}
+          <div className="
+            bg-gray-200 dark:bg-gray-800/40 
+            backdrop-blur-md border border-gray-300/40 dark:border-gray-700/40
+            h-20 flex items-center justify-center rounded-lg mb-4 
+            text-gray-600 dark:text-gray-400
+          ">
+            Advertisement
+          </div>
+
+          {/* RELATED PLAYLISTS */}
+          <div>
+            <ThemedHeading>
+              Related Playlists
+            </ThemedHeading>
+           
+            <div className="space-y-4">
+              {relatedPlaylist?.map((pl, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-2xl font-extrabold text-black dark:text-white">
+                    {i + 1}
+                  </span>
+                  <TopPlaylist
+                    id={pl.id}
+                    title={pl.title}
+                    curator={pl.curator}
+                    image={pl.image}
+                    plays={pl.plays as number}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
