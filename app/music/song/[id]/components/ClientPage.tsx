@@ -190,7 +190,7 @@ export default function ClientPage({ data, relatedSongs }: ClientPageProps) {
        
         {/* HERO + MAIN: cols 1-8 */}
         <section className="lg:col-span-8 space-y-8">
-           {loading ? (
+           {/* {loading ? (
                   <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
                 ) : topAd ? (
                   <AdBanner
@@ -206,7 +206,7 @@ export default function ClientPage({ data, relatedSongs }: ClientPageProps) {
                 ) : (
                   <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
                 )}
-          {/* Hero */}
+          Hero */}
           <div className="italic bg-white dark:bg-neutral-900 dark:border-white/5 overflow-hidden">
             <div className="md:flex items-center gap-6 py-6 ">
               {/* Cover */}
