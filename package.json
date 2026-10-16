@@ -5,9 +5,8 @@
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096 --loader ts-node/esm --trace-warnings --no-warnings\" ts-node server.mts",
     "build": "next build --webpack && tsc --project tsconfig.server.json",
-    "start:socket": "cross-env NODE_ENV=production node .server-build/server.mjs",
-    "start:next": "next start",
-    "start": "cross-env NODE_ENV=production node .server-build/server.mjs",
+    "start:socket": "cross-env NODE_ENV=production node dist/server.mjs",
+    "start": "npm run start:socket",
     "lint": "eslint app actions components data lib scripts server.mts proxy.ts next.config.ts"
   },
   "dependencies": {
@@ -46,7 +45,6 @@
     "@tanstack/react-query-devtools": "^5.90.2",
     "@tanstack/react-table": "^8.21.3",
     "@uiw/react-md-editor": "^4.0.8",
-    "aws-sdk": "^2.1692.0",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.3",
     "busboy": "^1.6.0",
@@ -61,7 +59,7 @@
     "formidable": "^3.5.4",
     "framer-motion": "^12.23.12",
     "jsonwebtoken": "^9.0.2",
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "keen-slider": "^6.8.6",
     "libphonenumber-js": "^1.12.25",
@@ -72,11 +70,11 @@
     "motion": "^12.23.12",
     "next": "^16.3.0",
     "next-auth": "^4.24.11",
-    "next-pwa": "^5.6.0",
+    "@serwist/next": "^9.5.13",
     "next-themes": "^0.4.6",
     "nextjs-toploader": "^3.8.16",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.13",
+    "nodemailer-v10": "npm:nodemailer@^10.1.2",
     "pdfkit": "^0.17.2",
     "react": "^19.2.8",
     "react-datepicker": "^8.10.0",
@@ -89,7 +87,6 @@
     "react-phone-number-input": "^3.4.12",
     "react-quill-new": "^3.6.0",
     "react-redux": "^9.2.0",
-    "react-spotify-web-playback": "^0.14.7",
     "recharts": "^2.15.4",
     "resend": "^6.5.2",
     "socket.io": "^4.8.1",
@@ -112,17 +109,23 @@
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/formidable": "^3.4.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/next-pwa": "^5.6.9",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.21",
     "@types/pdfkit": "^0.17.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "cross-env": "^10.0.0",
-    "eslint": "^9",
-    "eslint-config-next": "15.4.6",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.35",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "serwist": "^9.5.13"
+  },
+  "overrides": {
+    "@next/eslint-plugin-next": {
+      "glob": "13.0.6"
+    },
+    "quill": "2.0.2"
   }
 }

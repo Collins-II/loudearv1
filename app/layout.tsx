@@ -10,6 +10,7 @@ import GoogleProvider from "@/lib/provider/google_provider";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { getCurrentUser } from "@/actions/getCurrentUser";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -107,6 +108,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-white`}
       >
+        <ServiceWorkerRegistration />
                 {/* Inject USER ID into window */}
         <Script id="user-id">
           {`

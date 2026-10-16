@@ -1,12 +1,9 @@
-import withPWAInit from "next-pwa";
+import withSerwistInit from "@serwist/next";
 
-const withPWA = withPWAInit({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
-  // Disable only during dev (important for Windows builds)
+const withSerwist = withSerwistInit({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
   disable: process.env.NODE_ENV === "development",
-  buildExcludes: [/middleware-manifest.json$/], // prevents trace file lock issues
 });
 
 const nextConfig = {
@@ -36,4 +33,4 @@ const nextConfig = {
   outputFileTracingRoot: process.cwd(),
 };
 
-export default withPWA(nextConfig);
+export default withSerwist(nextConfig);

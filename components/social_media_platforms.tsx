@@ -1,5 +1,5 @@
 import React from "react";
-import { FaFacebookF, FaInstagram, FaTwitter, FaYoutube, FaSpotify, FaApple, FaTiktok } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaTwitter, FaYoutube, FaApple, FaTiktok } from "react-icons/fa";
 import { Card } from "@/components/ui/card";
 
 const platforms = [
@@ -28,12 +28,6 @@ const platforms = [
     color: "hover:bg-red-600",
   },
   {
-    name: "Spotify",
-    url: "https://spotify.com/YoMapsYo",
-    icon: <FaSpotify className="w-6 h-6" />,
-    color: "hover:bg-green-600",
-  },
-  {
     name: "Apple Music",
     url: "https://music.apple.com/YoMapsYo",
     icon: <FaApple className="w-6 h-6" />,
@@ -55,7 +49,7 @@ export default function SocialMediaPlatforms() {
           Connect with Yo Maps Yo
         </h2>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-6 justify-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 justify-center">
           {platforms.map((platform) => (
             <Card
               key={platform.name}

@@ -9,7 +9,6 @@ import {
   IconHelp,
   IconMusic,
   IconSettings,
-  IconBrandSpotify,
   IconVideo,
   IconUserEdit,
 } from "@tabler/icons-react"
@@ -81,7 +80,7 @@ const data = {
     {
       name: "Promotions & Marketing",
       url: "/studio/dashboard/admin/promotions",
-      icon: IconBrandSpotify,
+      icon: IconChartBar,
     },
    /* {
       name: "Bookings & Shows",

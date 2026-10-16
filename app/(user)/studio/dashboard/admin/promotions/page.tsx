@@ -62,7 +62,16 @@ export default function PromotionsPage() {
   useEffect(() => {
     const saved = sessionStorage.getItem("promotionsData");
     if (saved) {
-      setCampaigns(JSON.parse(saved));
+      const savedCampaigns: Campaign[] = JSON.parse(saved);
+      const filteredCampaigns = savedCampaigns.filter(
+        (campaign) =>
+          typeof campaign.platform !== "string" ||
+          campaign.platform.toLowerCase() !== "spotify"
+      );
+      setCampaigns(filteredCampaigns);
+      if (filteredCampaigns.length !== savedCampaigns.length) {
+        sessionStorage.setItem("promotionsData", JSON.stringify(filteredCampaigns));
+      }
     } else {
       // Dummy campaigns
       const dummy: Campaign[] = [
@@ -219,7 +228,6 @@ export default function PromotionsPage() {
                 <SelectItem value="Instagram">Instagram</SelectItem>
                 <SelectItem value="YouTube">YouTube</SelectItem>
                 <SelectItem value="Facebook">Facebook</SelectItem>
-                <SelectItem value="Spotify">Spotify</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>

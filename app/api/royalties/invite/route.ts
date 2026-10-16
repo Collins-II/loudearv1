@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/actions/getCurrentUser";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
+import nodemailer from "nodemailer-v10";
 import { connectToDatabase } from "@/lib/database";
 import RoyaltySplit from "@/lib/database/models/royalty-splits";
 
