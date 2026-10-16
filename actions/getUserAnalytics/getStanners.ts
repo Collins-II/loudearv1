@@ -2,6 +2,7 @@
 
 import { connectToDatabase } from "@/lib/database";
 import User from "@/lib/database/models/user";
+import { StanEvent } from "@/lib/database/models/stanEvent";
 import mongoose from "mongoose";
 
 export interface FollowerAnalytics {
@@ -11,52 +12,52 @@ export interface FollowerAnalytics {
   followerTrend: { date: string; count: number }[];
 }
 
+const TREND_MONTHS = 6;
+
 /**
- * Returns detailed analytics for a user's followers (stan-based).
- * Uses the `stan` array on the User model as the source of truth.
+ * Follower analytics for an artist. A "stan" is stored on the fan's `stan` array,
+ * so followers are the users whose array contains this id. Growth is derived from
+ * the timestamped StanEvent log; follows made before the log existed count as
+ * baseline followers.
  */
 export async function getUserFollowersAnalytics(userId: string): Promise<FollowerAnalytics> {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user id");
+  }
   await connectToDatabase();
 
-  const uid = new mongoose.Types.ObjectId(userId);
+  const artistId = new mongoose.Types.ObjectId(userId);
+  const now = new Date();
+  const monthStarts = Array.from({ length: TREND_MONTHS }, (_, i) =>
+    new Date(now.getFullYear(), now.getMonth() - (TREND_MONTHS - 1 - i), 1)
+  );
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const trendStart = monthStarts[0];
 
-  // 🧠 Fetch the user document (with stan field populated length)
-  const user = await User.findById(uid).select("stan createdAt updatedAt").lean();
+  const [totalFollowers, newFollowers, recentEvents] = await Promise.all([
+    User.countDocuments({ stan: artistId }),
+    StanEvent.countDocuments({ artist: artistId, createdAt: { $gte: thirtyDaysAgo } }),
+    StanEvent.find({ artist: artistId, createdAt: { $gte: trendStart } })
+      .select("createdAt")
+      .lean<{ createdAt: Date }[]>(),
+  ]);
 
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  const totalFollowers = user.stan?.length || 0;
-
-  // For trend analysis, we’ll assume we can inspect when followers joined:
-  // If you later extend stan to hold { followerId, followedAt }, this will become time-accurate.
-  // For now, we’ll simulate trend using user timestamps and follower counts.
-
-  //const now = new Date();
-  //const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  //const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  // 🗓 Compute followers gained this month (approximate)
-  // You could replace this with actual logs or events for precision
-  const newFollowers = Math.floor(totalFollowers * 0.1); // ~10% estimated growth placeholder
-
-  // 📈 Simulated previous month data (could be replaced with real monthly snapshot collection)
-  const lastMonthFollowers = Math.max(totalFollowers - newFollowers, 0);
-
+  const previousFollowers = Math.max(totalFollowers - newFollowers, 0);
   const growthRate =
-    lastMonthFollowers === 0
-      ? 100
-      : ((totalFollowers - lastMonthFollowers) / lastMonthFollowers) * 100;
+    previousFollowers === 0
+      ? newFollowers > 0
+        ? 100
+        : 0
+      : (newFollowers / previousFollowers) * 100;
 
-  // 📊 Mock trend array (for dashboard charts)
-  const followerTrend = Array.from({ length: 6 }).map((_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (5 - i));
-    const count = Math.floor(
-      lastMonthFollowers + ((totalFollowers - lastMonthFollowers) / 6) * i
-    );
-    return { date: date.toISOString().slice(0, 10), count };
+  // Followers at the end of each month = total minus follows gained after it
+  const followerTrend = monthStarts.map((start, i) => {
+    const end = i === TREND_MONTHS - 1 ? now : monthStarts[i + 1];
+    const gainedAfter = recentEvents.filter((e) => e.createdAt >= end).length;
+    return {
+      date: start.toISOString().slice(0, 10),
+      count: Math.max(totalFollowers - gainedAfter, 0),
+    };
   });
 
   return {

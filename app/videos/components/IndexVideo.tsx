@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/PageHeader";
+import AdUnit from "@/components/ads/AdUnit";
 
 import { DropdownRadio } from "@/components/DropdownRadio";
 import { ChartRow } from "@/components/music/ChartRow";
@@ -10,8 +11,6 @@ import { TopVideoCard } from "@/components/video/TopVideoCard";
 import { ChartItem } from "@/actions/getCharts";
 import { VideoCard } from "@/components/video/VideoCard";
 import ThemedHeading from "@/components/themed-heading";
-import AdBanner from "@/components/ads/AdBanner";
-import { fetchAdByPlacement, MockAdData, mockAdDatabase } from "@/data/mockAds";
 
 const genres = ["All", "Pop", "R&B", "Hip Hop", "Afrobeat"];
 const alphabet = ["All", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
@@ -25,34 +24,19 @@ interface IndexVideoProps {
 }
 
 export default function IndexVideo({ videos }: IndexVideoProps) {
-   const [loading, setLoading] = useState(false);
-    const [topAd, setTopAd] = useState<MockAdData | null>(null);
-         
-           useEffect(() => {
-             async function loadAdvertisements() {
-               try {
-                 // Fetch leaderboard placement from API simulator
-                 const fetchedAd = await fetchAdByPlacement("leaderboard");
-                 setTopAd(fetchedAd);
-               } catch (error) {
-                 console.error("Failed loading advertising banner streams", error);
-               } finally {
-                 setLoading(false);
-               }
-             }
-             loadAdvertisements();
-           }, []);
   // --- Filters ---
   const [filters, setFilters] = useState<{
     filter: FilterType;
     genre: string;
     letter: string;
     view: ViewMode;
+    sort: Sort;
   }>({
     filter: "latest",
     genre: "All",
     letter: "All",
     view: "grid",
+    sort: "this-week",
   });
 
   // --- Top 10 by views ---
@@ -92,6 +76,16 @@ export default function IndexVideo({ videos }: IndexVideoProps) {
       list = list.sort((a, b) => b.stats.totalViews - a.stats.totalViews).slice(0, 20);
     }
 
+    if (filters.filter !== "a-z") {
+      if (filters.sort === "this-week") {
+        list.sort((a, b) => b.stats.weeklyViews - a.stats.weeklyViews);
+      } else if (filters.sort === "last-week") {
+        list.sort((a, b) => (a.lastWeek ?? Number.MAX_SAFE_INTEGER) - (b.lastWeek ?? Number.MAX_SAFE_INTEGER));
+      } else {
+        list.sort((a, b) => b.stats.totalViews - a.stats.totalViews);
+      }
+    }
+
     return list;
   }, [videos, filters]);
 
@@ -127,42 +121,36 @@ export default function IndexVideo({ videos }: IndexVideoProps) {
 
   // --- Clear Filters ---
   const clearFilters = () =>
-    setFilters({ filter: "latest", genre: "All", letter: "All", view: "grid" });
+    setFilters({ filter: "latest", genre: "All", letter: "All", view: "grid", sort: "this-week" });
 
   return (
     <main className="bg-background min-h-screen">
-      {/* Header */}
-      <section className="bg-gradient-to-r from-black via-gray-900 to-black text-white pt-24 pb-12 px-6 md:px-12">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start justify-between gap-6">
-          <div>
-            <motion.h1
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6 }}
-              className="text-blue-400 text-4xl md:text-6xl font-extrabold tracking-tight"
-            >
-              Explore Videos
-            </motion.h1>
-
-            <div className="mt-6 flex gap-3">
+      <PageHeader
+        eyebrow="Watch"
+        title="Explore Videos"
+        description="Catch the latest releases and see which videos are gaining momentum."
+        actions={
+          <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-1" role="group" aria-label="Video layout">
               <Button
-                variant={filters.view === "grid" ? "secondary" : "default"}
+                variant="ghost"
+                aria-pressed={filters.view === "grid"}
+                className={filters.view === "grid" ? "bg-sky-500 text-white hover:bg-sky-400 hover:text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}
                 onClick={() => setFilters((f) => ({ ...f, view: "grid" }))}
               >
                 Grid View
               </Button>
               <Button
-                variant={filters.view === "chart" ? "secondary" : "default"}
+                variant="ghost"
+                aria-pressed={filters.view === "chart"}
+                className={filters.view === "chart" ? "bg-sky-500 text-white hover:bg-sky-400 hover:text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}
                 onClick={() => setFilters((f) => ({ ...f, view: "chart" }))}
               >
                 Weekly Chart
               </Button>
-            </div>
           </div>
-
-          {/* Filters */}
-          <section className="flex flex-col flex-wrap gap-6 items-center justify-center">
-            <div className="flex flex-wrap w-full items-center justify-start gap-4">
+        }
+      >
+        <div className="flex w-full flex-wrap items-center gap-3 lg:justify-end">
               <DropdownRadio
                 actionLabel="A-Z"
                 label="By Alphabet"
@@ -204,29 +192,10 @@ export default function IndexVideo({ videos }: IndexVideoProps) {
               <Button variant="secondary" size="sm" onClick={clearFilters}>
                 Clear Filters
               </Button>
-            </div>
-          </section>
         </div>
-      </section>
+      </PageHeader>
 
       {/* Content */}
-                  {loading ? (
-              <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-                 ) : topAd ? (
-                  <AdBanner
-                    size={topAd.size}
-                    destinationUrl={topAd.destinationUrl}
-                    imageUrl={topAd.imageUrl}
-                    altText={topAd.altText}
-                    gamblingWarning={topAd.gamblingWarning}
-                    companyName={topAd.companyName}
-                    onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-                    onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-                  />
-                ) : (
-                  <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
-             )}
-      
       <section className="max-w-7xl mx-auto px-6 xl:px-0 py-12 grid grid-cols-1 lg:grid-cols-4 gap-12">
         {/* Main */}
         <div className="lg:col-span-3">
@@ -236,16 +205,16 @@ export default function IndexVideo({ videos }: IndexVideoProps) {
                 {`Top ${filters.genre} (${filters.filter.replace("-", " ")})`}
               </ThemedHeading>
             <div className="divide-y">
-              {trendingVideos.map((item) => (
+                {filteredVideos.slice(0, 10).map((item, index) => (
                 <ChartRow
                   key={item.id}
-                  idx={item.position}
+                    idx={index + 1}
                   title={item.title}
                   artist={item.artist ?? ""}
                   href={`/videos/${item.id}`}
                   cover={item.image}
                   thisWeek={item.position}
-                  lastWeek={item.lastWeek ?? 0}
+                  lastWeek={item.lastWeek}
                 />
               ))}
             </div>
@@ -284,34 +253,11 @@ export default function IndexVideo({ videos }: IndexVideoProps) {
               </div>
             </>
           )}
-                      {loading ? (
-                  <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-                     ) : topAd ? (
-                      <AdBanner
-                        size={topAd.size}
-                        destinationUrl={topAd.destinationUrl}
-                        imageUrl={topAd.imageUrl}
-                        altText={topAd.altText}
-                        gamblingWarning={topAd.gamblingWarning}
-                        companyName={topAd.companyName}
-                        onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-                        onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-                      />
-                    ) : (
-                      <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
-                 )}
         </div>
 
         {/* Sidebar */}
         <aside className="space-y-12">
-          <AdBanner
-            size={mockAdDatabase[3].size}
-            destinationUrl={mockAdDatabase[3].destinationUrl}
-            imageUrl={mockAdDatabase[3].imageUrl}
-            altText={mockAdDatabase[3].altText}
-            gamblingWarning={mockAdDatabase[3].gamblingWarning}
-            companyName={mockAdDatabase[3].companyName}
-        />
+          <AdUnit placement="square" />
           <div>
               <ThemedHeading>
                 Top 10 Videos
@@ -332,16 +278,6 @@ export default function IndexVideo({ videos }: IndexVideoProps) {
                 />
               ))}
             </div>
-              <AdBanner
-                size={mockAdDatabase[1].size}
-                destinationUrl={mockAdDatabase[1].destinationUrl}
-                imageUrl={mockAdDatabase[1].imageUrl}
-                altText={mockAdDatabase[1].altText}
-                gamblingWarning={mockAdDatabase[1].gamblingWarning}
-                companyName={mockAdDatabase[1].companyName}
-                dismissible={true}
-                onDismiss={() => console.log("User hidden square ad placement.")}
-              />
           </div>
         </aside>
       </section>

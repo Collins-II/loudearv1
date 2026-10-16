@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/navbar";
@@ -23,6 +23,8 @@ const geistMono = Geist_Mono({
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://loudear.com";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "LoudEar – Music & Video Streaming",
   description:
@@ -31,7 +33,6 @@ export const metadata: Metadata = {
 
   applicationName: "LoudEar",
   manifest: "/manifest.json",
-  themeColor: "#161616",
 
   icons: {
     icon: [
@@ -78,6 +79,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#161616",
+};
+
 
 export default async function RootLayout({
   children,
@@ -88,17 +93,15 @@ export default async function RootLayout({
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
-        {/* ✅ Google AdSense */}
-        <Script
-          id="adsense-script"
-          async
-          strategy="afterInteractive"
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
-          crossOrigin="anonymous"
-        />
-        
-        <Script src="https://yourcdn.com/ads.js" />  {/* ✅ AdCloud AdSense */}
-
+        {adsenseId && (
+          <Script
+            id="adsense-script"
+            async
+            strategy="afterInteractive"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseId}`}
+            crossOrigin="anonymous"
+          />
+        )}
       </head>
 
       <body

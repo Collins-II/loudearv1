@@ -15,7 +15,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { incrementInteraction } from "@/actions/getItemsWithStats";
 import Image from "next/image";
 
 interface VideoPlayerProps {
@@ -128,8 +127,18 @@ export default function VideoPlayer({
 
     const handleView = () => {
       if (userId && !hasCountedView && video.currentTime > 2) {
-        incrementInteraction(id, "Video", "view", userId);
         setHasCountedView(true);
+        fetch("/api/interactions/view", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, model: "Video" }),
+        }).then((response) => {
+          if (!response.ok) {
+            throw new Error(`View interaction failed with status ${response.status}`);
+          }
+        }).catch((error: unknown) => {
+          console.error("Failed to record video view:", error);
+        });
       }
     };
 

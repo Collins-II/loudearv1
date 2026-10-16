@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Loudear
 
-## Getting Started
+Loudear is a Next.js application with a custom Node.js server for Socket.IO.
 
-First, run the development server:
+## Local development
+
+Install dependencies, copy `.env.example` to `.env.local`, fill in the required credentials, then run:
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app is served at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Deploy to a long-running Node.js host that supports WebSockets; the custom server handles both Next.js requests and Socket.IO. Use Node.js 20.9 or newer.
 
-## Learn More
+1. Configure the required environment variables from `.env.example` in the deployment environment. Set `MONGODB_URL`, `NEXT_AUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_BASE_URL`, Cloudinary credentials, `NEXT_PUBLIC_GOOGLE_ADSENSE_ID` for ad revenue, and at least one complete OAuth provider.
+2. Install locked dependencies and verify the production build:
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   npm ci
+   npm run lint
+   npm run build
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Start the production server with `npm start`. Do not use `next start` for the live app; that omits the Socket.IO server.
+4. Configure the host’s health checks, HTTPS termination, persistent process supervision, and WebSocket upgrade forwarding. Keep secrets in the host’s secret manager, never in source control.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Advertising is the primary monetization channel. E-commerce (cart, licensing, Stripe checkout) is temporarily disabled; set `NEXT_PUBLIC_ECOMMERCE_ENABLED=true` and rebuild to re-enable it.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Stripe (only when e-commerce is enabled), email, Apple sign-in, and mobile-money providers require their respective optional credentials in `.env.example`; do not enable these features in production until provider credentials and callbacks are configured and tested.

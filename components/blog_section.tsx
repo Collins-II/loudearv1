@@ -7,8 +7,7 @@ import { CardContent } from "@/components/ui/card";
 import { timeAgo } from "@/lib/utils";
 import { blogPosts } from "@/data/blogPosts";
 import ThemedHeading from "./themed-heading";
-import AdBanner from "./ads/AdBanner";
-import { mockAdDatabase } from "@/data/mockAds";
+import AdUnit from "@/components/ads/AdUnit";
 
 
 export default function BlogSection() {
@@ -97,16 +96,7 @@ export default function BlogSection() {
                 </div>
               </motion.a>
             </div>
-                  <AdBanner
-                size={mockAdDatabase[1].size}
-                destinationUrl={mockAdDatabase[1].destinationUrl}
-                imageUrl={mockAdDatabase[1].imageUrl}
-                altText={mockAdDatabase[1].altText}
-                gamblingWarning={mockAdDatabase[1].gamblingWarning}
-                companyName={mockAdDatabase[1].companyName}
-                dismissible={true}
-                onDismiss={() => console.log("User hidden square ad placement.")}
-              />
+                  <AdUnit placement="square" />
           </div>
         </div>
 

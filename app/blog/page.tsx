@@ -9,16 +9,21 @@ import { DropdownRadio } from "@/components/DropdownRadio";
 import { CalendarFilter } from "@/components/CalenderFilter";
 import { blogPosts } from "@/data/blogPosts";
 import ThemedHeading from "@/components/themed-heading";
+import { Search } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import AdUnit from "@/components/ads/AdUnit";
 
 const genres = ["All", "HIP HOP", "SPOTLIGHT", "FEATURES", "CHARTS", "NEW MUSIC", "AFROBEATS"];
 
 export default function BlogPage() {
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [search, setSearch] = useState("");
 
   const clearFilters = () => {
     setSelectedGenre("All");
     setSelectedDate(undefined);
+    setSearch("");
   };
 
   const filteredPosts = blogPosts.filter((post) => {
@@ -26,7 +31,10 @@ export default function BlogPage() {
     const dateMatch = selectedDate
       ? post.date.toDateString() === selectedDate.toDateString()
       : true;
-    return genreMatch && dateMatch;
+    const query = search.trim().toLowerCase();
+    const searchMatch =
+      !query || `${post.title} ${post.excerpt} ${post.author}`.toLowerCase().includes(query);
+    return genreMatch && dateMatch && searchMatch;
   });
 
   const featuredPost = filteredPosts[0];
@@ -36,25 +44,24 @@ export default function BlogPage() {
   return (
     <section className="bg-background dark:bg-[#0d0d10] min-h-screen text-gray-900 dark:text-gray-100">
 
-      {/* HERO HEADER */}
-      <section
-        className="
-          bg-gradient-to-r from-black via-gray-900 to-black text-white
-          text-white pt-24 pb-12 px-6 md:px-12
-        "
+      <PageHeader
+        eyebrow="LoudEar Journal"
+        title="Blog"
+        description="Stories, interviews, and new perspectives from the LoudEar community."
       >
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-6 pt-10">
-          <motion.h1
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            className="text-blue-500 text-4xl md:text-6xl font-extrabold tracking-tight"
-          >
-            Blog
-          </motion.h1>
+        <div className="flex w-full flex-wrap items-center gap-3 lg:justify-end">
+            <label className="flex h-10 min-w-56 items-center gap-2 border border-white/20 bg-black/30 px-3 text-white focus-within:border-white/60">
+              <Search className="h-4 w-4 shrink-0 text-white/60" aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search stories"
+                aria-label="Search stories"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-white/50"
+              />
+            </label>
 
-          {/* FILTERS */}
-          <div className="flex gap-4 flex-wrap items-center">
             <CalendarFilter onChange={(val) => setSelectedDate(val)} />
 
             <DropdownRadio
@@ -72,12 +79,12 @@ export default function BlogPage() {
             >
               Clear Filters
             </Button>
-          </div>
         </div>
-      </section>
+      </PageHeader>
 
       {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto px-6 xl:px-0 py-16">
+        <AdUnit placement="leaderboard" className="mb-10" />
 
         {/* SECTION HEADING */}
         <ThemedHeading className="lg:text-5xl">

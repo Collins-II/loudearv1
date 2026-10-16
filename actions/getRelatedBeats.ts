@@ -25,6 +25,7 @@ export const getRelatedBeats = async (
   const songs = await Beat.find({
     genre,
     _id: { $ne: excludeId },
+    visibility: "public",
   })
     .limit(5)
     .lean({ virtuals: true })

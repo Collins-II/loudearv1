@@ -5,6 +5,9 @@ import Transaction from "@/lib/database/models/transactions";
 
 // GET handler - polling
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const { searchParams } = new URL(req.url);
   const txId = searchParams.get("txId");
 
@@ -20,6 +23,9 @@ export async function GET(req: Request) {
 
 // POST handler
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const { txId } = await req.json();
 
   if (!txId) {

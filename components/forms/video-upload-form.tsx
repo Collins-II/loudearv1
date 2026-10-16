@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
 import {
@@ -17,7 +17,6 @@ import {
   Upload,
   Video,
   ImageIcon,
-  CheckCircle2,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -30,6 +29,8 @@ import { Progress } from "../ui/progress";
 interface VideoUploadFormProps {
   onSuccess?: () => void;
 }
+
+const videoSteps = ["Video details", "Thumbnail", "Video file", "Review & upload"];
 
 export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
   const [step, setStep] = useState(1);
@@ -54,8 +55,6 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-
-  const controllerRef = useRef<AbortController | null>(null);
 
   const { getRootProps: getVideoRoot, getInputProps: getVideoInput } = useDropzone({
     accept: { "video/*": [] },
@@ -163,13 +162,6 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
     }
   };
 
-  const handleCancelUpload = () => {
-    controllerRef.current?.abort();
-    setUploading(false);
-    setUploadProgress(0);
-    toast.info("Upload canceled.");
-  };
-
   const resetForm = () => {
     setStep(1);
     setTitle("");
@@ -196,40 +188,45 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Title *</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter title" />
+              <Label htmlFor="video-title" className="mb-2 block">Title <span className="text-emerald-600">*</span></Label>
+              <Input id="video-title" className="bg-background" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter video title" />
             </div>
             <div>
-              <Label>Artist *</Label>
-              <Input value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Enter artist" />
+              <Label htmlFor="video-artist" className="mb-2 block">Artist <span className="text-emerald-600">*</span></Label>
+              <Input id="video-artist" className="bg-background" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Primary artist" />
             </div>
             <div>
-              <Label>Videographer *</Label>
-              <Input value={videographer} onChange={(e) => setVideographer(e.target.value)} placeholder="Enter videographer" />
+              <Label htmlFor="video-videographer" className="mb-2 block">Videographer <span className="text-emerald-600">*</span></Label>
+              <Input id="video-videographer" className="bg-background" value={videographer} onChange={(e) => setVideographer(e.target.value)} placeholder="Who filmed this video?" />
             </div>
             <div>
-              <Label>Genre</Label>
-              <Input value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="e.g. Hip-hop, Gospel" />
+              <Label htmlFor="video-genre" className="mb-2 block">Genre</Label>
+              <Input id="video-genre" className="bg-background" value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="e.g. Hip-hop, Gospel" />
             </div>
             <div>
-              <Label>Label</Label>
-              <Input value={label} onChange={(e) => setLabel(e.target.value)} />
+              <Label htmlFor="video-label" className="mb-2 block">Label</Label>
+              <Input id="video-label" className="bg-background" value={label} onChange={(e) => setLabel(e.target.value)} />
             </div>
             <div>
-              <Label>Copyright</Label>
-              <Input value={copyright} onChange={(e) => setCopyright(e.target.value)} />
+              <Label htmlFor="video-copyright" className="mb-2 block">Copyright</Label>
+              <Input id="video-copyright" className="bg-background" value={copyright} onChange={(e) => setCopyright(e.target.value)} />
             </div>
             <div>
-              <Label>Mood</Label>
-              <Input value={mood} onChange={(e) => setMood(e.target.value)} />
+              <Label htmlFor="video-mood" className="mb-2 block">Mood</Label>
+              <Input id="video-mood" className="bg-background" value={mood} onChange={(e) => setMood(e.target.value)} />
             </div>
             <div>
-              <Label>Visibility</Label>
+              <Label htmlFor="video-visibility" className="mb-2 block">Visibility</Label>
               <select
-                aria-label="visibility-select"
-                className="w-full rounded-md bg-neutral-800 border border-neutral-700 p-2 text-white"
+                id="video-visibility"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 value={visibility}
-                onChange={(e) => setVisibility(e.target.value as any)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === "public" || value === "private" || value === "unlisted") {
+                    setVisibility(value);
+                  }
+                }}
               >
                 <option value="private">Private</option>
                 <option value="public">Public</option>
@@ -237,44 +234,44 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <Label>Description</Label>
+              <Label htmlFor="video-description" className="mb-2 block">Description</Label>
               <Textarea
+                id="video-description"
+                className="min-h-24 resize-y bg-background"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief description..."
+                placeholder="Tell listeners about this video"
               />
             </div>
             <div>
-              <Label>Tags</Label>
-              <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Separate tags with commas" />
+              <Label htmlFor="video-tags" className="mb-2 block">Tags</Label>
+              <Input id="video-tags" className="bg-background" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Separate tags with commas" />
             </div>
             <div>
-              <Label>Features</Label>
-              <Input value={features} onChange={(e) => setFeatures(e.target.value)} placeholder="Featured artists" />
+              <Label htmlFor="video-features" className="mb-2 block">Featured artists</Label>
+              <Input id="video-features" className="bg-background" value={features} onChange={(e) => setFeatures(e.target.value)} placeholder="Add collaborators" />
             </div>
           </div>
         );
       case 2:
         return (
           <div className="flex flex-col items-center gap-4">
-            <Label>Thumbnail *</Label>
+            <Label className="self-start">Thumbnail <span className="text-emerald-600">*</span></Label>
             <div
               {...getThumbRoot()}
-              className="w-full border-2 border-dashed border-neutral-700 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500"
+              className="flex min-h-56 w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center outline-none transition-colors hover:border-emerald-500/60 hover:bg-emerald-500/5 focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
-              <input {...getThumbInput()} />
+              <input {...getThumbInput()} aria-label="Choose video thumbnail" />
               {thumbnailPreview ? (
-                <Image
-                  src={thumbnailPreview}
-                  alt="Thumbnail Preview"
-                  width={160}
-                  height={100}
-                  className="mx-auto rounded-lg object-cover"
-                />
+                <div className="space-y-3">
+                  <Image src={thumbnailPreview} alt="Thumbnail preview" width={240} height={150} unoptimized className="mx-auto max-h-40 rounded-lg object-cover shadow-sm" />
+                  <p className="text-sm text-muted-foreground">{thumbnail?.name} · Choose another image</p>
+                </div>
               ) : (
-                <div className="flex flex-col items-center text-neutral-400">
-                  <ImageIcon className="w-10 h-10 mb-2" />
-                  <p>Click or drag to upload thumbnail</p>
+                <div className="flex flex-col items-center text-muted-foreground">
+                  <ImageIcon className="mb-3 size-8" aria-hidden="true" />
+                  <p className="font-medium text-foreground">Add a thumbnail</p>
+                  <p className="mt-1 text-sm">Drag an image here or browse files</p>
                 </div>
               )}
             </div>
@@ -283,18 +280,23 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
       case 3:
         return (
           <div className="flex flex-col items-center gap-4">
-            <Label>Video *</Label>
+            <Label className="self-start">Video file <span className="text-emerald-600">*</span></Label>
             <div
               {...getVideoRoot()}
-              className="w-full border-2 border-dashed border-neutral-700 rounded-xl p-6 text-center cursor-pointer hover:border-green-500"
+              className="flex min-h-56 w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center outline-none transition-colors hover:border-emerald-500/60 hover:bg-emerald-500/5 focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
-              <input {...getVideoInput()} />
+              <input {...getVideoInput()} aria-label="Choose video file" />
               {videoFile ? (
-                <p className="text-neutral-300">{videoFile.name}</p>
+                <div className="space-y-2">
+                  <Video className="mx-auto size-8 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <p className="max-w-full truncate font-medium">{videoFile.name}</p>
+                  <p className="text-sm text-muted-foreground">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB · Choose another video</p>
+                </div>
               ) : (
-                <div className="flex flex-col items-center text-neutral-400">
-                  <Upload className="w-10 h-10 mb-2" />
-                  <p>Click or drag to upload video</p>
+                <div className="flex flex-col items-center text-muted-foreground">
+                  <Upload className="mb-3 size-8" aria-hidden="true" />
+                  <p className="font-medium text-foreground">Add your video</p>
+                  <p className="mt-1 text-sm">Drag a video here or browse files</p>
                 </div>
               )}
             </div>
@@ -302,14 +304,14 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
         );
       case 4:
         return (
-          <div className="space-y-3">
-            <h3 className="font-semibold text-lg">Review Details</h3>
-            <div className="text-sm space-y-1">
-              <p><strong>Title:</strong> {title}</p>
-              <p><strong>Artist:</strong> {artist}</p>
-              <p><strong>Videographer:</strong> {videographer}</p>
-              <p><strong>Genre:</strong> {genre}</p>
-              <p><strong>Visibility:</strong> {visibility}</p>
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Review your release</h3>
+            <div className="grid gap-3 rounded-xl border border-border bg-muted/20 p-4 text-sm sm:grid-cols-2">
+              <p><span className="text-muted-foreground">Title</span><br /><strong>{title || "Not set"}</strong></p>
+              <p><span className="text-muted-foreground">Artist</span><br /><strong>{artist || "Not set"}</strong></p>
+              <p><span className="text-muted-foreground">Videographer</span><br /><strong>{videographer || "Not set"}</strong></p>
+              <p><span className="text-muted-foreground">Genre</span><br /><strong>{genre || "Not set"}</strong></p>
+              <p><span className="text-muted-foreground">Visibility</span><br /><strong className="capitalize">{visibility}</strong></p>
             </div>
 
             {thumbnailPreview && (
@@ -318,6 +320,7 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
                 alt="Thumbnail"
                 width={180}
                 height={110}
+                unoptimized
                 className="rounded-lg object-cover"
               />
             )}
@@ -328,9 +331,9 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
   <div className="space-y-2 mt-4">
     <Progress
       value={uploadProgress}
-      className="h-2 bg-neutral-800 transition-all duration-300"
+      className="h-2 bg-muted transition-all duration-300"
     />
-    <p className="text-xs text-neutral-400 text-center">
+    <p className="text-center text-xs text-muted-foreground">
       Uploading... {uploadProgress}%
     </p>
   </div>
@@ -345,37 +348,29 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="bg-neutral-900 border border-neutral-800 text-white rounded-2xl shadow-md max-w-3xl mx-auto p-2 sm:p-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <Video className="text-blue-500 w-5 h-5 sm:w-6 sm:h-6" />
-            Upload Video
+      <Card className="mx-auto max-w-4xl overflow-hidden rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+        <CardHeader className="border-b border-border/70 px-6 py-5">
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold tracking-tight">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Video className="size-5" aria-hidden="true" />
+            </span>
+            Video details
           </CardTitle>
+          <p className="text-sm text-muted-foreground">Add your video information, assets, and visibility settings.</p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-7 p-6">
           {/* Steps indicator */}
-          <div className="flex justify-between text-xs sm:text-sm mb-6">
-            {[1, 2, 3, 4].map((s) => (
-              <div
-                key={s}
-                className={`flex-1 text-center ${
-                  step === s
-                    ? "text-blue-500 font-bold"
-                    : step > s
-                    ? "text-green-500"
-                    : "text-neutral-600"
-                }`}
-              >
-                {step > s ? (
-                  <CheckCircle2 className="mx-auto w-4 h-4 sm:w-5 sm:h-5 mb-1" />
-                ) : (
-                  <span className="inline-flex items-center justify-center w-5 h-5 border border-neutral-700 rounded-full mb-1">
-                    {s}
-                  </span>
-                )}
-                Step {s}
-              </div>
-            ))}
+          <div role="group" aria-label={`Step ${step} of ${videoSteps.length}: ${videoSteps[step - 1]}`} className="space-y-3">
+            <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>Release setup</span>
+              <span>{step} of {videoSteps.length}</span>
+            </div>
+            <div className="flex gap-1.5" aria-hidden="true">
+              {videoSteps.map((label, index) => (
+                <div key={label} className={`h-1.5 flex-1 rounded-full transition-colors ${index < step ? "bg-emerald-500" : "bg-muted"}`} />
+              ))}
+            </div>
+            <p className="text-sm font-semibold">{videoSteps[step - 1]}</p>
           </div>
 
           {renderStep()}
@@ -386,7 +381,7 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
               <Button
                 variant="outline"
                 onClick={() => setStep((s) => s - 1)}
-                className="bg-neutral-800 text-neutral-300 hover:bg-neutral-700 w-full sm:w-auto"
+                className="w-full rounded-full sm:w-auto"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" /> Back
               </Button>
@@ -394,25 +389,16 @@ export default function VideoUploadForm({ onSuccess }: VideoUploadFormProps) {
             {step < 4 ? (
               <Button
                 onClick={() => setStep((s) => s + 1)}
-                className="ml-auto bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                className="ml-auto w-full rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400 sm:w-auto"
               >
                 Next <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             ) : (
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:ml-auto">
-                {uploading && (
-                  <Button
-                    variant="outline"
-                    onClick={handleCancelUpload}
-                    className="text-red-400 border-red-600 hover:bg-red-900/20 w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                )}
                 <Button
                   disabled={uploading}
                   onClick={handleUpload}
-                  className="bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2 w-full sm:w-auto"
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400 sm:w-auto"
                 >
                   {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
                   {uploading ? "Uploading..." : "Upload Video"}

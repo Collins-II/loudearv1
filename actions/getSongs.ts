@@ -8,7 +8,7 @@ import { ChartItem, getCharts } from "./getCharts";
 // lib/actions/getSongs.ts
 
 
-export const getSongs = async (limit = 12): Promise<ChartItem[]> => {
+export const getSongs = async (limit = 16): Promise<ChartItem[]> => {
     return await getCharts({
       category: "songs",
       limit,

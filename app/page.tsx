@@ -11,11 +11,9 @@ import { getSongs } from "@/actions/getSongs";
 import { getVideos } from "@/actions/getVideos";
 import Image from "next/image";
 import RealtimeNotifications from "@/components/realtime/realtime-notification";
-import { regenerateAutoPlaylists } from "@/lib/playlists/generator";
-import { getPlaylists } from "@/actions/getPlaylists";
 
 export const revalidate = 60;
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 // ------------------ SEO METADATA ------------------
 export const metadata = {
@@ -60,8 +58,6 @@ export const metadata = {
 async function loadContent() {
   try {
     const [songs, videos] = await Promise.all([getSongs(), getVideos()]);
-    await regenerateAutoPlaylists();
-
     if (!songs?.length || !videos?.length) {
       return { error: true, songs: [], videos: [] };
     }
@@ -75,7 +71,6 @@ async function loadContent() {
 // ------------------ PAGE ------------------
 export default async function Home() {
   const { error, songs, videos } = await loadContent();
-  await getPlaylists()
 
   if (error) {
     return (

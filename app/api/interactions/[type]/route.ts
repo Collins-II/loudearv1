@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Types } from "mongoose";
+import { getCurrentUser } from "@/actions/getCurrentUser";
+import { connectToDatabase } from "@/lib/database";
 import { Song } from "@/lib/database/models/song";
 import { Album } from "@/lib/database/models/album";
 import { Video } from "@/lib/database/models/video";
+import Beat from "@/lib/database/models/beat";
 
 // ✅ Model map
-const modelMap = { Song, Album, Video } as const;
+const modelMap = { Song, Album, Video, Beat } as const;
+type InteractionModel = keyof typeof modelMap;
+
+function isInteractionModel(value: unknown): value is InteractionModel {
+  return (
+    typeof value === "string" &&
+    Object.hasOwn(modelMap, value)
+  );
+}
 
 // ✅ Use Next.js inferred context type — do NOT manually define RouteContext
 export async function POST(
@@ -15,36 +26,61 @@ export async function POST(
   const { type } = await context.params;
 
   try {
-    const { id, model, userId }: { id: string; model: keyof typeof modelMap; userId: string } =
-      await req.json();
+    if (!["like", "share", "download", "view"].includes(type)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid interaction type" },
+        { status: 400 }
+      );
+    }
 
-    if (!Types.ObjectId.isValid(id) || !Types.ObjectId.isValid(userId)) {
-      return NextResponse.json({ success: false, error: "Invalid ID" }, { status: 400 });
+    const user = await getCurrentUser();
+    if (!user?._id) {
+      return NextResponse.json(
+        { success: false, error: "Sign in to interact" },
+        { status: 401 }
+      );
+    }
+
+    const body: { id?: unknown; model?: unknown } = await req.json();
+    const { id, model } = body;
+    if (typeof id !== "string" || !Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid media ID" },
+        { status: 400 }
+      );
+    }
+    if (!isInteractionModel(model)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid media model" },
+        { status: 400 }
+      );
     }
 
     const Model = modelMap[model];
-    if (!Model) {
-      return NextResponse.json({ success: false, error: "Invalid model" }, { status: 400 });
-    }
-
+    await connectToDatabase();
     const doc = await Model.findById(id);
     if (!doc) {
       return NextResponse.json({ success: false, error: `${model} not found` }, { status: 404 });
     }
 
-    const field = `${type}s`; // likes, shares, downloads, views
+    const userId = new Types.ObjectId(String(user._id));
+    const field = `${type}s`;
 
     if (!Array.isArray(doc[field])) {
       doc[field] = [];
     }
 
-    const already = doc[field].some((u: any) => u.toString() === userId);
+    const already = doc[field].some(
+      (value: Types.ObjectId) => value.toString() === String(userId)
+    );
     let updated = false;
 
     if (type === "like") {
       // ✅ Toggle like
       if (already) {
-        doc[field] = doc[field].filter((u: any) => u.toString() !== userId);
+        doc[field] = doc[field].filter(
+          (value: Types.ObjectId) => value.toString() !== String(userId)
+        );
       } else {
         doc[field].push(userId);
       }
@@ -67,11 +103,11 @@ export async function POST(
     const userLiked = doc.likes?.some((u: any) => u.toString() === userId) ?? false;
 
     globalThis.io?.to(id).emit("interaction:update", {
+      itemId: id,
       id,
       model,
       type,
       counts,
-      userLiked,
     });
 
     return NextResponse.json({ success: true, counts, userLiked });
@@ -80,4 +116,3 @@ export async function POST(
     return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
   }
 }
-

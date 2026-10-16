@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/PageHeader";
 
 import { ChartRow } from "@/components/music/ChartRow";
 import { DropdownRadio } from "@/components/DropdownRadio";
@@ -10,13 +10,14 @@ import { getCharts, ChartItem, getTrending } from "@/actions/getCharts";
 import { getSocket } from "@/lib/socketClient";
 import { useMemo } from "react";
 import { MusicCard } from "@/components/music/MusicCard";
+import Link from "next/link";
 import { TopSongCard } from "@/components/music/TopSongsCard";
 import SkeletonList from "@/components/skeletons/skeleton-list";
 import MusicCardSkeleton from "@/components/skeletons/music-card-skeleton";
 import TopCardSkeleton from "@/components/skeletons/top-card-skeleton";
 import ThemedHeading from "@/components/themed-heading";
-import AdBanner from "@/components/ads/AdBanner";
-import { fetchAdByPlacement, MockAdData, mockAdDatabase } from "@/data/mockAds";
+import SponsoredReleases from "@/components/campaign/SponsoredReleases";
+import AdUnit from "@/components/ads/AdUnit";
 
 // --- Filters ---
 const genres = ["All", "Hip Hop", "Afro Pop", "Gospel", "RnB", "Dancehall"];
@@ -27,63 +28,80 @@ type Category = "songs" | "albums" | "videos";
 type Sort = "this-week" | "last-week" | "all-time";
 type FilterType = "latest" | "trending" | "a-z" | "genre";
 
-export default function IndexMusicWrapper() {
+export default function IndexMusicWrapper({
+  initialCategory = "songs",
+}: {
+  initialCategory?: "songs" | "albums";
+}) {
   const [initialData, setInitialData] = useState<ChartItem[]>([]);
   const [top10Videos, setTop10Videos] = useState<ChartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [topSongsLoading, setTopSongsLoading] = useState(true);
 
   useEffect(() => {
-    async function loadInitial() {
+    let cancelled = false;
+
+    async function loadInitialCharts() {
       try {
         const charts = await getCharts({
-          category: "songs",
+          category: initialCategory,
           region: "global",
           sort: "this-week",
           limit: 50,
         });
-
-        const trendingVideos = await getTrending({
-          model: "Song",
-          limit: 30,
-          sinceDays: 30,
-        });
-
-        // 🔑 Normalize trending videos into ChartItem shape
-        const videos: ChartItem[] = trendingVideos.map((v: any, idx: number) => ({
-          id: String(v._id),
-          title: v.title,
-          artist: v.artist ?? "",
-          image: v.coverUrl ?? "",
-          videoUrl: v.videoUrl,
-          position: idx + 1,
-          lastWeek: null,
-          peak: idx + 1,
-          weeksOn: 1,
-          region: "global",
-          genre: v.genre ?? "Unknown",
-          releaseDate: v.releaseDate,
-          stats: {
-            weeklyViews: v.stats?.weeklyViews,
-            totalViews: v.stats?.totalViews,
-            plays: v.viewCount ?? 0,
-            downloads: v.downloadCount ?? 0,
-            likes: v.likeCount ?? 0,
-            views: v.viewCount ?? 0,
-            shares: v.shareCount ?? 0,
-            comments: v.commentCount ?? 0,
-          },
-        }));
-
-        setTop10Videos(videos);
-        setInitialData(charts);
+        if (!cancelled) setInitialData(charts);
       } catch (err) {
-        console.error("Error loading initial charts:", err);
+        console.error(`Error loading initial ${initialCategory} chart:`, err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
-    loadInitial();
-  }, []);
+
+    async function loadTopSongs() {
+      try {
+        const trendingSongs = await getTrending({
+          model: "Song",
+          limit: 10,
+          sinceDays: 30,
+        });
+        const songs: ChartItem[] = trendingSongs.map((song: any, index: number) => ({
+          id: String(song._id),
+          title: song.title,
+          artist: song.artist ?? "",
+          image: song.coverUrl ?? "",
+          videoUrl: song.fileUrl,
+          position: index + 1,
+          lastWeek: null,
+          peak: index + 1,
+          weeksOn: 1,
+          region: "global",
+          genre: song.genre ?? "Unknown",
+          releaseDate: song.releaseDate,
+          stats: {
+            weeklyViews: song.stats?.weeklyViews ?? 0,
+            totalViews: song.stats?.totalViews ?? song.viewCount ?? 0,
+            plays: song.viewCount ?? 0,
+            downloads: song.downloadCount ?? 0,
+            likes: song.likeCount ?? 0,
+            views: song.viewCount ?? 0,
+            shares: song.shareCount ?? 0,
+            comments: song.commentCount ?? 0,
+          },
+        }));
+        if (!cancelled) setTop10Videos(songs);
+      } catch (err) {
+        console.error("Error loading top songs:", err);
+      } finally {
+        if (!cancelled) setTopSongsLoading(false);
+      }
+    }
+
+    void loadInitialCharts();
+    void loadTopSongs();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialCategory]);
 
   if (loading) {
       return (
@@ -119,10 +137,27 @@ export default function IndexMusicWrapper() {
       );
     }
 
-  return <IndexMusic initialData={initialData} topVideos={top10Videos} />;
+  return (
+    <IndexMusic
+      initialData={initialData}
+      topVideos={top10Videos}
+      topSongsLoading={topSongsLoading}
+      initialCategory={initialCategory}
+    />
+  );
 }
 
-function IndexMusic({ initialData, topVideos }: { initialData: ChartItem[], topVideos: ChartItem[] }) {
+function IndexMusic({
+  initialData,
+  topVideos,
+  topSongsLoading,
+  initialCategory,
+}: {
+  initialData: ChartItem[];
+  topVideos: ChartItem[];
+  topSongsLoading: boolean;
+  initialCategory: Category;
+}) {
   const [filters, setFilters] = useState<{
     filter: FilterType;
     genre: string;
@@ -135,40 +170,33 @@ function IndexMusic({ initialData, topVideos }: { initialData: ChartItem[], topV
     filter: "latest",
     genre: "All",
     letter: "All",
-    category: "songs",
+    category: initialCategory,
     region: "global",
     sort: "this-week",
     view: "grid",
   });
 
-  const socket = getSocket();
   const [charts, setCharts] = useState<ChartItem[]>(initialData);
   const [loading, setLoading] = useState(false);
+  const [chartError, setChartError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const itemsPerPage = 15;
   const [visibleItems, setVisibleItems] = useState(itemsPerPage);
   const loaderRef = useRef<HTMLDivElement | null>(null);
-   const [topAd, setTopAd] = useState<MockAdData | null>(null);
-         
-           useEffect(() => {
-             async function loadAdvertisements() {
-               try {
-                 // Fetch leaderboard placement from API simulator
-                 const fetchedAd = await fetchAdByPlacement("leaderboard");
-                 setTopAd(fetchedAd);
-               } catch (error) {
-                 console.error("Failed loading advertising banner streams", error);
-               } finally {
-                 setLoading(false);
-               }
-             }
-             loadAdvertisements();
-           }, []);
+  const skipInitialFetch = useRef(initialData.length > 0);
 
   // --- Fetch charts when category/sort/region changes ---
   useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
+
+    let cancelled = false;
     async function fetchCharts() {
       setLoading(true);
+      setChartError(null);
       try {
         const data = await getCharts({
           category: filters.category,
@@ -176,27 +204,39 @@ function IndexMusic({ initialData, topVideos }: { initialData: ChartItem[], topV
           sort: filters.sort,
           limit: 100,
         });
-        setCharts(data);
+        if (!cancelled) setCharts(data);
       } catch (err) {
         console.error("Failed to fetch charts:", err);
+        if (!cancelled) {
+          setChartError(
+            `Could not load ${filters.category}. Please try again.`
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
-    fetchCharts();
-  }, [filters.category, filters.region, filters.sort]);
+
+    void fetchCharts();
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.category, filters.region, filters.sort, retryCount]);
 
   useEffect(() => {
-  socket.on("charts:update:category", (payload) => {
-    if (payload.category === filters.category) {
-      setCharts(payload.items);
-    }
-  });
+    const socket = getSocket();
+    const onCategoryUpdate = (payload: {
+      category: Category;
+      items: ChartItem[];
+    }) => {
+      if (payload.category === filters.category) setCharts(payload.items);
+    };
 
-  return () => {
-    socket.off("charts:update");
-  };
-}, [filters.category,socket]);
+    socket.on("charts:update:category", onCategoryUpdate);
+    return () => {
+      socket.off("charts:update:category", onCategoryUpdate);
+    };
+  }, [filters.category]);
 
 
 
@@ -247,14 +287,14 @@ const filteredCharts = useMemo(() => {
 }, [charts, filters]);
 
 
-  useEffect(() => setVisibleItems(itemsPerPage), [filters]);
+  useEffect(() => setVisibleItems(itemsPerPage), [filteredCharts]);
 
   useEffect(() => {
-  if (filters.view === "grid") return;
+  if (filters.view !== "grid" || visibleItems >= filteredCharts.length) return;
 
   const observer = new IntersectionObserver(
     (entries) => {
-      if (entries[0].isIntersecting) {
+      if (entries.some((entry) => entry.isIntersecting)) {
         setVisibleItems((prev) =>
           Math.min(prev + itemsPerPage, filteredCharts.length)
         );
@@ -266,10 +306,8 @@ const filteredCharts = useMemo(() => {
   const current = loaderRef.current;
   if (current) observer.observe(current);
 
-  return () => {
-    if (current) observer.unobserve(current);
-  };
-}, [filteredCharts, filters.view]);
+  return () => observer.disconnect();
+}, [filteredCharts.length, filters.view, visibleItems]);
 
 
   const cardUrl = filters.category === "songs"? "song" : "album" 
@@ -279,7 +317,7 @@ const filteredCharts = useMemo(() => {
       filter: "latest",
       genre: "All",
       letter: "All",
-      category: "songs",
+      category: initialCategory,
       region: "global",
       sort: "this-week",
       view: "chart",
@@ -287,60 +325,59 @@ const filteredCharts = useMemo(() => {
 
   return (
     <main className="bg-background min-h-screen">
-      {/* Header */}
-     <section className="bg-gradient-to-r from-black via-gray-900 to-black text-white pt-24 pb-12 px-6 md:px-12">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start justify-between gap-6">
-          <div>
-            <motion.h1
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6 }}
-              className="text-blue-400 text-4xl md:text-6xl font-extrabold tracking-tight"
-            >
-              Explore Music
-            </motion.h1>
-
-            {/* View toggle */}
-            <div className="mt-6 flex gap-3">
+      <PageHeader
+        eyebrow={initialCategory === "albums" ? "Albums" : "Listen"}
+        title={initialCategory === "albums" ? "Explore albums" : "Explore music"}
+        description={
+          initialCategory === "albums"
+            ? "Find complete releases, browse by genre, and follow the albums listeners are discovering."
+            : "Find new songs and albums, browse by genre, or follow what is trending."
+        }
+        actions={
+          <div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-1" role="group" aria-label="Music layout">
               <Button
-                variant={filters.view === "grid" ? "secondary" : "default"}
+                variant="ghost"
+                aria-pressed={filters.view === "grid"}
+                className={filters.view === "grid" ? "bg-sky-500 text-white hover:bg-sky-400 hover:text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}
                 onClick={() => setFilters((f) => ({ ...f, view: "grid" }))}
               >
                 Grid View
               </Button>
               <Button
-                variant={filters.view === "chart" ? "secondary" : "default"}
+                variant="ghost"
+                aria-pressed={filters.view === "chart"}
+                className={filters.view === "chart" ? "bg-sky-500 text-white hover:bg-sky-400 hover:text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}
                 onClick={() => setFilters((f) => ({ ...f, view: "chart" }))}
               >
                 Weekly Chart
               </Button>
-            </div>
           </div>
-
-          {/* Filters */}
-          <section className="flex flex-col flex-wrap gap-6 items-start lg:items-end justify-center">
-            <div className="flex gap-6 text-lg font-bold">
+        }
+      >
+        <div className="flex w-full flex-col gap-5 lg:items-end">
+          <div className="flex flex-wrap gap-5 text-sm font-semibold">
               {(["songs", "albums"] as const).map((cat) => (
-                <button
+                <Link
                   key={cat}
-                  onClick={() => setFilters((f) => ({ ...f, category: cat }))}
-                  className={`capitalize border-b-4 ${
+                  href={cat === "albums" ? "/music/album" : "/music"}
+                  aria-current={filters.category === cat ? "page" : undefined}
+                  className={`capitalize rounded-full border px-4 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 ${
                     filters.category === cat
-                      ? "border-slate-100 text-slate-100"
-                      : "border-transparent hover:border-white hover:text-gray-300"
-                  } pb-1 transition`}
+                      ? "border-white bg-white text-slate-950"
+                      : "border-white/15 bg-white/5 text-white/75 hover:border-white/30 hover:bg-white/10 hover:text-white"
+                  }`}
                 >
                   {cat}
-                </button>
+                </Link>
               ))}
             </div>
 
-            <div className="flex flex-wrap w-full items-center justify-start gap-4">
+          <div className="flex w-full flex-wrap items-center gap-3 lg:justify-end">
               {/* A–Z filter */}
               <DropdownRadio
                 actionLabel="A-Z"
                 label="By Alphabet"
-                data={alphabet as unknown as string[]}
+                data={[...alphabet]}
                 onChange={(val) =>
                   setFilters((f) => ({ ...f, letter: val, filter: "a-z" }))
                 }
@@ -379,31 +416,29 @@ const filteredCharts = useMemo(() => {
               <Button variant="secondary" size="sm" onClick={clearFilters}>
                 Clear Filters
               </Button>
-            </div>
-          </section>
+          </div>
         </div>
-      </section>
+      </PageHeader>
 
-                  {loading ? (
-            <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-              ) : topAd ? (
-            <AdBanner
-               size={topAd.size}
-               destinationUrl={topAd.destinationUrl}
-               imageUrl={topAd.imageUrl}
-               altText={topAd.altText}
-               gamblingWarning={topAd.gamblingWarning}
-               companyName={topAd.companyName}
-               onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-               onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-            />
-            ) : (
-              <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
-            )}
       {/* Content */}
       <section className="max-w-7xl mx-auto px-6 xl:px-0 py-12 grid grid-cols-1 lg:grid-cols-4 gap-12">
         {/* Main */}
         <div className="lg:col-span-3">
+          {chartError && (
+            <div
+              role="alert"
+              className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+            >
+              <span className="text-destructive">{chartError}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRetryCount((count) => count + 1)}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
           {loading ? (
             filters.view === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -420,20 +455,24 @@ const filteredCharts = useMemo(() => {
                 {`Top ${filters.category} (${filters.sort.replace("-", " ")})`}
               </ThemedHeading>
 
-              <div className="divide-y">
-                {charts.map((item) => (
+              {filteredCharts.length ? <div className="divide-y">
+                {filteredCharts.map((item, index) => (
                   <ChartRow
                     key={item.id}
-                    idx={item.position}
+                    idx={index + 1}
                     title={item.title}
                     artist={item.artist ?? ""}
-                    href={`/charts/${filters.category}/${item.id}`}
+                    href={`/music/${cardUrl}/${item.id}`}
                     cover={item.image}
                     thisWeek={item.position}
-                    lastWeek={item.lastWeek ?? 0}
+                    lastWeek={item.lastWeek}
                   />
                 ))}
-              </div>
+              </div> : (
+                <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                  No chart entries match these filters.
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -443,10 +482,15 @@ const filteredCharts = useMemo(() => {
                     : `${filters.filter} ${filters.category}`}
               </ThemedHeading>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {filteredCharts.slice(0, visibleItems).map((item, idx) => (
+              {filteredCharts.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                  No {filters.category} match these filters. Try adjusting the genre or release filter.
+                </p>
+              ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
+                {filteredCharts.slice(0, visibleItems).map((item) => (
                   <MusicCard
-                    key={idx}
+                    key={item.id}
                     id={item.id}
                     href={`/music/${cardUrl}/${item.id}`}
                     title={item.title}
@@ -460,10 +504,12 @@ const filteredCharts = useMemo(() => {
                   />
                 ))}
               </div>
+              )}
 
               <div
                 ref={loaderRef}
-                className="h-12 flex justify-center items-center"
+                className="flex h-12 items-center justify-center"
+                aria-live="polite"
               >
                 {visibleItems < filteredCharts.length && (
                   <span className="text-gray-500">Loading more...</span>
@@ -471,42 +517,23 @@ const filteredCharts = useMemo(() => {
               </div>
             </>
           )}
-           {loading ? (
-                      <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-                        ) : topAd ? (
-                      <AdBanner
-                         size={topAd.size}
-                         destinationUrl={topAd.destinationUrl}
-                         imageUrl={topAd.imageUrl}
-                         altText={topAd.altText}
-                         gamblingWarning={topAd.gamblingWarning}
-                         companyName={topAd.companyName}
-                         onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-                         onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-                      />
-                      ) : (
-                        <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
-                      )}
         </div>
 
         {/* Sidebar */}
         <aside className="space-y-12">
-           <AdBanner
-            size={mockAdDatabase[3].size}
-            destinationUrl={mockAdDatabase[3].destinationUrl}
-            imageUrl={mockAdDatabase[3].imageUrl}
-            altText={mockAdDatabase[3].altText}
-            gamblingWarning={mockAdDatabase[3].gamblingWarning}
-            companyName={mockAdDatabase[3].companyName}
-          />
+          <div>
+            <SponsoredReleases />
+          </div>
+          <AdUnit placement="square" />
+
           <div>
               <ThemedHeading>
                Top 10 Songs
               </ThemedHeading>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
-              {topVideos.map((track, index) => (
+              {topVideos.map((track) => (
                 <TopSongCard
-                  key={index}
+                  key={track.id}
                   position={track.position}
                   id={track.id}
                   title={track.title}
@@ -518,20 +545,16 @@ const filteredCharts = useMemo(() => {
                   views={track.stats.totalViews}
                 />
               ))}
+              {topSongsLoading &&
+                Array.from({ length: 3 }).map((_, index) => (
+                  <TopCardSkeleton key={`top-song-skeleton-${index}`} />
+                ))}
             </div>
           </div>
-          <AdBanner
-                      size={mockAdDatabase[1].size}
-                      destinationUrl={mockAdDatabase[1].destinationUrl}
-                      imageUrl={mockAdDatabase[1].imageUrl}
-                      altText={mockAdDatabase[1].altText}
-                      gamblingWarning={mockAdDatabase[1].gamblingWarning}
-                      companyName={mockAdDatabase[1].companyName}
-                      dismissible={true}
-                      onDismiss={() => console.log("User hidden square ad placement.")}
-                    />
 
-         
+          <div className="bg-gray-200 h-60 flex items-center justify-center rounded-lg">
+            <span className="text-gray-500">Advertisement</span>
+          </div>
         </aside>
       </section>
     </main>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/database";
 import Hero from "@/lib/database/models/hero";
 import cloudinary from "@/lib/cloudinary";
+import { getCurrentUser } from "@/actions/getCurrentUser";
 
 async function bufferFromFile(file: File): Promise<Buffer> {
   const arrayBuffer = await file.arrayBuffer();
@@ -10,17 +11,35 @@ async function bufferFromFile(file: File): Promise<Buffer> {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "artist") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     await connectToDatabase();
 
     const formData = await req.formData();
-    const cover = formData.get("cover") as File;
-    const sections = JSON.parse(formData.get("sections") as string);
+    const cover = formData.get("cover");
+    const rawSections = formData.get("sections");
 
-    if (!cover || !sections) {
+    if (!(cover instanceof File) || typeof rawSections !== "string") {
       return NextResponse.json(
         { error: "Missing fields" },
         { status: 400 }
       );
+    }
+    if (!cover.type.startsWith("image/") || cover.size > 10 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Cover must be an image under 10MB" },
+        { status: 400 }
+      );
+    }
+
+    let sections: unknown;
+    try {
+      sections = JSON.parse(rawSections);
+    } catch {
+      return NextResponse.json({ error: "Invalid sections" }, { status: 400 });
     }
 
     // Upload cover to Cloudinary

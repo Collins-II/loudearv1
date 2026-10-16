@@ -10,6 +10,8 @@ import { getCurrencySymbol, formatNumberWithCommas } from "@/lib/utils";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
 import crypto from "crypto";
+import { ECOMMERCE_ENABLED } from "@/lib/features";
+import AdSupportedDownloadSheet from "@/components/modals/AdSupportedDownloadSheet";
 
 /**
  * UNIVERSAL MEDIA MONETIZATION FLOW
@@ -69,7 +71,24 @@ type MonetizedDownloadSheetProps = {
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 20;
 
-export default function MonetizedDownloadSheet({
+export default function MonetizedDownloadSheet(props: MonetizedDownloadSheetProps) {
+  if (!ECOMMERCE_ENABLED) {
+    return (
+      <AdSupportedDownloadSheet
+        open={props.open}
+        onClose={props.onClose}
+        coverUrl={props.coverUrl}
+        title={props.title}
+        artist={props.artist}
+        onDownload={props.onDownload}
+        onDownloaded={props.onPaidDownload}
+      />
+    );
+  }
+  return <PaidDownloadSheet {...props} />;
+}
+
+function PaidDownloadSheet({
   open,
   onClose,
   price,

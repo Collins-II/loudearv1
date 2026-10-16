@@ -35,23 +35,40 @@ export async function OPTIONS() {
  */
 export async function PATCH(req: Request) {
   try {
+    await connectToDatabase();
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return corsResponse({ error: "Unauthorized" }, 401);
+    if (currentUser.role !== "artist") return corsResponse({ error: "Artist account required" }, 403);
+
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const albumId = formData.get("albumId")?.toString();
     const uploadId = formData.get("uploadId")?.toString();
-    const chunkIndex = parseInt(formData.get("chunkIndex")?.toString() || "0");
-    const totalChunks = parseInt(formData.get("totalChunks")?.toString() || "1");
+    const chunkIndex = Number.parseInt(formData.get("chunkIndex")?.toString() || "0", 10);
+    const totalChunks = Number.parseInt(formData.get("totalChunks")?.toString() || "1", 10);
     const fileName = formData.get("fileName")?.toString() || "song.mp3";
 
     if (!file || !albumId || !uploadId) {
       return corsResponse({ error: "Missing fields" }, 400);
     }
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(uploadId) || path.basename(fileName) !== fileName) {
+      return corsResponse({ error: "Invalid upload identifiers" }, 400);
+    }
+    if (!Number.isInteger(chunkIndex) || !Number.isInteger(totalChunks) || totalChunks < 1 || totalChunks > 1000 || chunkIndex < 0 || chunkIndex >= totalChunks) {
+      return corsResponse({ error: "Invalid chunk coordinates" }, 400);
+    }
 
-    await connectToDatabase();
-    const currentUser = await getCurrentUser();
-    if (!currentUser) return corsResponse({ error: "Unauthorized" }, 401);
+    const album = await Album.findById(albumId).select("author");
+    if (!album) return corsResponse({ error: "Album not found" }, 404);
+    if (album.author.toString() !== currentUser._id.toString()) {
+      return corsResponse({ error: "Forbidden" }, 403);
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return corsResponse({ error: "Chunk exceeds the 10 MB limit" }, 413);
+    }
 
-    const uploadFolder = path.join(UPLOAD_DIR, uploadId);
+    const userUploadDir = path.join(UPLOAD_DIR, currentUser._id.toString());
+    const uploadFolder = path.join(userUploadDir, uploadId);
     if (!fs.existsSync(uploadFolder)) {
       fs.mkdirSync(uploadFolder, { recursive: true });
     }

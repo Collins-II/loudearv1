@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { getSocket } from "@/lib/socketClient"
+import { useSession } from "next-auth/react"
+import { usePathname, useRouter } from "next/navigation"
 
 interface StanButtonProps {
   artistId: string
@@ -13,31 +15,38 @@ interface StanButtonProps {
 
 export function StanButton({ artistId, initialStanCount = 0 }: StanButtonProps) {
   const socket = getSocket()
+  const { data: session } = useSession()
+  const router = useRouter()
+  const pathname = usePathname()
   const [isStan, setIsStan] = useState(false)
   const [stanCount, setStanCount] = useState(initialStanCount)
   const [isPending, startTransition] = useTransition()
+  const [isLoading, setIsLoading] = useState(true)
 
 
-  // Fetch initial state
+  // Fetch the viewer's follow state and the live count
   useEffect(() => {
-    async function loadStanStatus() {
-      try {
-        const res = await fetch(`/api/stan?artistId=${artistId}`)
+    if (!artistId) return
+    const controller = new AbortController()
+    setIsLoading(true)
+    fetch(`/api/stan?artistId=${artistId}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) return
         const data = await res.json()
-        if (res.ok) {
-          setIsStan(data.userHasStanned)
-          setStanCount(data.stanCount)
-        }
-      } catch (e) {
-        console.error("Failed to fetch stan status:", e)
-      }
-    }
-    startTransition(() => loadStanStatus())
-  }, [artistId])
-
+        setIsStan(!!data.userHasStanned)
+        setStanCount(data.stanCount)
+      })
+      .catch((e) => {
+        if (e?.name !== "AbortError") console.error("Failed to fetch stan status:", e)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false)
+      })
+    return () => controller.abort()
+  }, [artistId, session?.user?.id])
   // Join artist-specific room
   useEffect(() => {
-    if (!socket) return
+    if (!socket || !artistId) return
     socket.emit("join", `artist:${artistId}`)
 
     const handleUpdate = (payload: any) => {
@@ -56,10 +65,17 @@ export function StanButton({ artistId, initialStanCount = 0 }: StanButtonProps) 
 
   // Handle follow/unfollow
   const handleToggle = async () => {
+    if (!session?.user) {
+      router.push(`/auth?callbackUrl=${encodeURIComponent(pathname)}`)
+      return
+    }
+    if (!artistId || session.user.id === artistId) return
+
+    const previous = { isStan, stanCount }
     startTransition(async () => {
       const nextState = !isStan
       setIsStan(nextState)
-      setStanCount((prev) => prev + (nextState ? 1 : -1)) // optimistic update
+      setStanCount(Math.max(0, stanCount + (nextState ? 1 : -1))) // optimistic update
 
       try {
         const res = await fetch(`/api/stan`, {
@@ -74,13 +90,14 @@ export function StanButton({ artistId, initialStanCount = 0 }: StanButtonProps) 
         const data = await res.json()
         if (!res.ok) throw new Error(data?.error || "Failed to update")
 
+        setIsStan(!!data.userHasStanned)
         setStanCount(data.stanCount)
         toast.success(data.message || "Success ✅")
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err)
-        setIsStan(!nextState)
-        setStanCount((prev) => prev - (nextState ? 1 : -1))
-        toast.error(err.message || "Something went wrong ❌")
+        setIsStan(previous.isStan)
+        setStanCount(previous.stanCount)
+        toast.error(err instanceof Error ? err.message : "Something went wrong")
       }
     })
   }
@@ -88,9 +105,11 @@ export function StanButton({ artistId, initialStanCount = 0 }: StanButtonProps) 
   return (
     <div className="flex items-center gap-2">
       <button
-        aria-label="stan-button"
+        type="button"
+        aria-pressed={isStan}
+        aria-label={isStan ? "Unstan artist" : "Stan artist"}
         onClick={handleToggle}
-        disabled={isPending}
+        disabled={isPending || isLoading || !artistId || session?.user?.id === artistId}
         className={cn(
           "transition-all duration-300 focus:outline-none",
           isPending && "opacity-70 cursor-not-allowed"

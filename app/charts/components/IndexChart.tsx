@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/PageHeader";
+import AdUnit from "@/components/ads/AdUnit";
 import { ChartRow } from "@/components/music/ChartRow";
 import { DropdownRadio } from "@/components/DropdownRadio";
 import { getCharts, ChartItem, getTrending } from "@/actions/getCharts";
@@ -13,10 +14,16 @@ import SkeletonList from "@/components/skeletons/skeleton-list";
 import ChartCardSkeleton from "@/components/skeletons/chart-card-skeleton";
 import { TrendingItem } from "@/app/search/components/IndexSearch";
 import TopCardSkeleton from "@/components/skeletons/top-card-skeleton";
-import ThemedHeading from "@/components/themed-heading";
 import { TopRecordsBoard } from "@/components/analytics/TopRecords";
-import AdBanner from "@/components/ads/AdBanner";
-import { fetchAdByPlacement, MockAdData, mockAdDatabase } from "@/data/mockAds";
+import {
+  Activity,
+  AlertCircle,
+  BarChart3,
+  Disc3,
+  Music2,
+  RefreshCw,
+  Video,
+} from "lucide-react";
 
 /* ---------------------------------- Filters ---------------------------------- */
 const genres = ["All", "Hip Hop", "Afro Pop", "Gospel", "RnB", "Dancehall"];
@@ -31,42 +38,59 @@ export default function ChartsPageWrapper() {
   const [initialData, setInitialData] = useState<ChartItem[]>([]);
   const [top10Videos, setTop10Videos] = useState<ChartItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  
+  const [topVideosLoading, setTopVideosLoading] = useState(true);
+  const [topVideosError, setTopVideosError] = useState<string | null>(null);
+  const [refreshSeed, setRefreshSeed] = useState(0);
 
   useEffect(() => {
-    async function loadInitial() {
+    let cancelled = false;
+
+    async function loadCharts() {
       try {
+        if (!cancelled) setLoading(true);
         const charts = await getCharts({
           category: "songs",
           region: "global",
-          sort: "all-time",
+          sort: "this-week",
           limit: 50,
         });
+        if (!cancelled) {
+          setInitialData(charts);
+        }
+      } catch (error) {
+        console.error("Error loading charts:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
+    async function loadTopVideos() {
+      try {
+        if (!cancelled) {
+          setTopVideosLoading(true);
+          setTopVideosError(null);
+        }
         const trendingVideos = await getTrending({
           model: "Video",
           limit: 10,
           sinceDays: 30,
         });
-
-        // Normalize trending videos
-        const videos: ChartItem[] = trendingVideos.map((v: any) => ({
+        const videos: ChartItem[] = trendingVideos.map((v: any, index: number) => ({
           id: String(v._id),
           title: v.title,
           artist: v.artist ?? "",
           image: v.coverUrl ?? "",
           videoUrl: v.videoUrl,
-          position: v.position,
+          position: index + 1,
           lastWeek: null,
-          peak: v.peak,
-          weeksOn: v.weeksOn,
+          peak: v.peak ?? index + 1,
+          weeksOn: v.weeksOn ?? 0,
           region: "global",
           genre: v.genre ?? "Unknown",
           releaseDate: v.releaseDate,
           stats: {
-            weeklyViews: v.stats?.weeklyViews,
-            totalViews: v.stats?.totalViews,
+            weeklyViews: v.stats?.weeklyViews ?? 0,
+            totalViews: v.stats?.totalViews ?? 0,
             plays: v.viewCount ?? 0,
             downloads: v.downloadCount ?? 0,
             likes: v.likeCount ?? 0,
@@ -75,50 +99,61 @@ export default function ChartsPageWrapper() {
             comments: v.commentCount ?? 0,
           },
         }));
-
-        setTop10Videos(videos);
-        setInitialData(charts);
-      } catch (err) {
-        console.error("Error loading charts:", err);
+        if (!cancelled) setTop10Videos(videos);
+      } catch (error) {
+        console.error("Error loading top videos:", error);
+        if (!cancelled) {
+          setTopVideosError("Top videos are temporarily unavailable.");
+          setTop10Videos([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setTopVideosLoading(false);
       }
     }
-    loadInitial();
-  }, []);
+
+    void loadCharts();
+    void loadTopVideos();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshSeed]);
 
   if (loading) {
     return (
-      <main className="bg-background min-h-screen px-6 md:px-12 py-24 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-12">
-        {/* Skeleton Main Grid */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* Grid Skeleton */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <ChartCardSkeleton key={i} />
-            ))}
+      <main className="min-h-screen bg-background">
+        <PageHeader
+          eyebrow="Charts"
+          title="Music Charts"
+          description="Explore the songs, albums, and videos leading the charts this week."
+        />
+        <section
+          aria-label="Loading music charts"
+          className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-5 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_20rem]"
+        >
+          <div className="space-y-4">
+            <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
+            <SkeletonList count={6} />
           </div>
-
-          {/* Chart Skeleton */}
-          <SkeletonList count={5} />
-        </div>
-
-        {/* Sidebar Skeleton */}
-        <aside className="space-y-12">
-          
-
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <TopCardSkeleton key={i} />
+          <aside className="space-y-4">
+            <div className="h-8 w-40 animate-pulse rounded-lg bg-muted" />
+            {Array.from({ length: 3 }).map((_, index) => (
+              <TopCardSkeleton key={index} />
             ))}
-          </div>
-
-        </aside>
+          </aside>
+        </section>
       </main>
     );
   }
 
-  return <ChartsPage initialData={initialData} topVideos={top10Videos} />;
+  return (
+    <ChartsPage
+      initialData={initialData}
+      topVideos={top10Videos}
+      topVideosLoading={topVideosLoading}
+      topVideosError={topVideosError}
+      refreshTopVideos={() => setRefreshSeed((seed) => seed + 1)}
+    />
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -128,9 +163,15 @@ export default function ChartsPageWrapper() {
 function ChartsPage({
   initialData,
   topVideos,
+  topVideosLoading,
+  topVideosError,
+  refreshTopVideos,
 }: {
   initialData: ChartItem[];
   topVideos: ChartItem[];
+  topVideosLoading: boolean;
+  topVideosError: string | null;
+  refreshTopVideos: () => void;
 }) {
   const [filters, setFilters] = useState({
     filter: "latest" as FilterType,
@@ -142,45 +183,59 @@ function ChartsPage({
     view: "grid" as ViewMode,
   });
 
-  const socket = getSocket();
   const [charts, setCharts] = useState<ChartItem[]>(initialData);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(initialData.length === 0);
+  const [chartError, setChartError] = useState<string | null>(null);
   const [trending, setTrending] = useState<TrendingItem[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingError, setTrendingError] = useState<string | null>(null);
 
   const itemsPerPage = 9;
   const [visibleItems, setVisibleItems] = useState(itemsPerPage);
   const loaderRef = useRef<HTMLDivElement | null>(null);
-   const [topAd, setTopAd] = useState<MockAdData | null>(null);
-       
-         useEffect(() => {
-           async function loadAdvertisements() {
-             try {
-               // Fetch leaderboard placement from API simulator
-               const fetchedAd = await fetchAdByPlacement("leaderboard");
-               setTopAd(fetchedAd);
-             } catch (error) {
-               console.error("Failed loading advertising banner streams", error);
-             } finally {
-               setLoading(false);
-             }
-           }
-           loadAdvertisements();
-         }, []);
+  const skipInitialChartFetch = useRef(initialData.length > 0);
+  const [chartRefreshSeed, setChartRefreshSeed] = useState(0);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
-   /* 🧠 Fetch trending */
-    useEffect(() => {
-      setLoading(true);
-      fetch("/api/trending/global?limit=6")
-        .then((r) => (r.ok ? r.json() : Promise.reject()))
-        .then((data) => setTrending(data.items || []))
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }, []);
-
-  /* --- Fetch charts on category/sort change --- */
   useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetchTrending() {
+      setTrendingLoading(true);
+      setTrendingError(null);
+      try {
+        const response = await fetch("/api/trending/global?limit=6", {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`Trending request failed (${response.status})`);
+        }
+        const data: { items?: TrendingItem[] } = await response.json();
+        setTrending(data.items ?? []);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Failed to fetch global trending records:", error);
+        setTrendingError("Trending records are temporarily unavailable.");
+      } finally {
+        if (!controller.signal.aborted) setTrendingLoading(false);
+      }
+    }
+
+    void fetchTrending();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (skipInitialChartFetch.current) {
+      skipInitialChartFetch.current = false;
+      return;
+    }
+
+    let cancelled = false;
+
     async function fetchCharts() {
       setLoading(true);
+      setChartError(null);
       try {
         const data = await getCharts({
           category: filters.category,
@@ -188,31 +243,54 @@ function ChartsPage({
           sort: filters.sort,
           limit: 100,
         });
-        setCharts(data);
+        if (!cancelled) {
+          setCharts(data);
+          setLastUpdatedAt(new Date());
+        }
       } catch (err) {
         console.error("Failed to fetch charts:", err);
+        if (!cancelled) {
+          setChartError("Charts could not be loaded. Please try again.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
-    fetchCharts();
-  }, [filters.category, filters.region, filters.sort]);
+
+    void fetchCharts();
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.category, filters.region, filters.sort, chartRefreshSeed]);
 
   useEffect(() => {
-  socket.on("charts:update:category", (payload) => {
-    if (payload.category === filters.category) {
-      setCharts(payload.items);
-    }
-  });
+    const socket = getSocket();
+    const handleCategoryUpdate = (payload: {
+      category: Category;
+      items: ChartItem[];
+    }) => {
+      if (payload.category === filters.category) {
+        setCharts(payload.items);
+        setChartError(null);
+      }
+    };
+    const handleItemUpdate = (update: { id: string; newPos: number }) => {
+      setCharts((current) =>
+        current.map((item) =>
+          item.id === update.id ? { ...item, position: update.newPos } : item
+        )
+      );
+    };
 
-  return () => {
-    socket.off("charts:update");
-  };
-}, [filters.category,socket]);
+    socket.on("charts:update:category", handleCategoryUpdate);
+    socket.on("charts:update:item", handleItemUpdate);
 
+    return () => {
+      socket.off("charts:update:category", handleCategoryUpdate);
+      socket.off("charts:update:item", handleItemUpdate);
+    };
+  }, [filters.category]);
 
-
-  /* --- Filtering logic --- */
   const filteredCharts = useMemo(() => {
     let list = [...charts];
 
@@ -235,17 +313,17 @@ function ChartsPage({
     }
 
     if (filters.filter === "latest") {
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
       list = list
         .filter((item) => {
-          const release = new Date(item.releaseDate ?? "");
-          const twoWeeksAgo = new Date();
-          twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
-          return release >= twoWeeksAgo;
+          const release = new Date(item.releaseDate);
+          return !Number.isNaN(release.getTime()) && release >= twoWeeksAgo;
         })
         .sort(
           (a, b) =>
-            new Date(b.releaseDate ?? "").getTime() -
-            new Date(a.releaseDate ?? "").getTime()
+            new Date(b.releaseDate).getTime() -
+            new Date(a.releaseDate).getTime()
         );
     }
 
@@ -258,13 +336,13 @@ function ChartsPage({
     return list;
   }, [charts, filters]);
 
-  useEffect(() => setVisibleItems(itemsPerPage), [filters]);
+  useEffect(() => setVisibleItems(itemsPerPage), [filteredCharts]);
 
   useEffect(() => {
-    if (filters.view === "grid") return;
+    if (filters.view !== "grid" || visibleItems >= filteredCharts.length) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        if (entries.some((entry) => entry.isIntersecting)) {
           setVisibleItems((prev) =>
             Math.min(prev + itemsPerPage, filteredCharts.length)
           );
@@ -274,12 +352,13 @@ function ChartsPage({
     );
     const current = loaderRef.current;
     if (current) observer.observe(current);
-    return () => {
-      if (current) observer.unobserve(current);
-    };
-  }, [filteredCharts, filters.view]);
+    return () => observer.disconnect();
+  }, [filteredCharts.length, filters.view, visibleItems]);
 
-  const cardUrl = filters.category === "songs" ? "song" : "album";
+  const itemHref = (id: string) =>
+    filters.category === "videos"
+      ? `/videos/${id}`
+      : `/music/${filters.category === "songs" ? "song" : "album"}/${id}`;
 
   const clearFilters = () =>
     setFilters({
@@ -292,62 +371,81 @@ function ChartsPage({
       view: "chart",
     });
 
+  const weeklyViews = filteredCharts.reduce(
+    (total, item) => total + (item.stats?.weeklyViews ?? 0),
+    0
+  );
+  const genreCount = new Set(
+    filteredCharts.map((item) => item.genre).filter(Boolean)
+  ).size;
+  const numberFormat = new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+
   return (
     <main className="bg-background min-h-screen">
-
-      {/* Header */}
-      <section className="bg-gradient-to-r from-black via-gray-900 to-black text-white pt-24 pb-12 px-6 md:px-12">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start justify-between gap-6">
-          <div>
-            <motion.h1
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6 }}
-              className="text-blue-400 text-4xl md:text-6xl font-extrabold tracking-tight"
-            >
-              Music Charts
-            </motion.h1>
-
-            {/* View toggle */}
-            <div className="mt-6 flex gap-3">
+      <PageHeader
+        eyebrow="Charts"
+        title="The charts, in motion."
+        description="See what listeners are playing, discovering, and sharing across Loudear."
+        actions={
+          <div
+            className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1"
+            role="group"
+            aria-label="Chart layout"
+          >
               <Button
-                variant={filters.view === "grid" ? "secondary" : "default"}
+                variant="ghost"
+                aria-pressed={filters.view === "grid"}
+                className={filters.view === "grid" ? "bg-white text-slate-950 hover:bg-white/90 hover:text-slate-950" : "text-white/70 hover:bg-white/10 hover:text-white"}
                 onClick={() => setFilters((f) => ({ ...f, view: "grid" }))}
               >
-                Grid View
+                <BarChart3 aria-hidden="true" />
+                Explore
               </Button>
               <Button
-                variant={filters.view === "chart" ? "secondary" : "default"}
+                variant="ghost"
+                aria-pressed={filters.view === "chart"}
+                className={filters.view === "chart" ? "bg-white text-slate-950 hover:bg-white/90 hover:text-slate-950" : "text-white/70 hover:bg-white/10 hover:text-white"}
                 onClick={() => setFilters((f) => ({ ...f, view: "chart" }))}
               >
-                Weekly Chart
+                <Activity aria-hidden="true" />
+                Weekly ranking
               </Button>
-            </div>
           </div>
-
-          {/* Filters */}
-          <section className="flex flex-col flex-wrap gap-6 items-start lg:items-end justify-center">
-            <div className="flex gap-6 text-lg font-bold">
+        }
+      >
+        <div className="flex w-full flex-col gap-5 lg:items-end">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Chart category">
               {(["songs", "albums", "videos"] as const).map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setFilters((f) => ({ ...f, category: cat }))}
-                  className={`capitalize border-b-4 ${
+                  aria-pressed={filters.category === cat}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium capitalize transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 ${
                     filters.category === cat
-                      ? "border-slate-100 text-slate-100"
-                      : "border-transparent hover:border-white hover:text-gray-300"
-                  } pb-1 transition`}
+                      ? "border-white bg-white text-slate-950"
+                      : "border-white/15 bg-white/5 text-white/75 hover:border-white/30 hover:bg-white/10 hover:text-white"
+                  }`}
                 >
+                  {cat === "songs" ? (
+                    <Music2 aria-hidden="true" className="size-4" />
+                  ) : cat === "albums" ? (
+                    <Disc3 aria-hidden="true" className="size-4" />
+                  ) : (
+                    <Video aria-hidden="true" className="size-4" />
+                  )}
                   {cat}
                 </button>
               ))}
             </div>
 
-            <div className="flex flex-wrap w-full items-center justify-start gap-4">
+          <div className="flex w-full flex-wrap items-center gap-3 lg:justify-end">
               <DropdownRadio
                 actionLabel="A-Z"
                 label="By Alphabet"
-                data={alphabet as unknown as string[]}
+                data={[...alphabet]}
                 onChange={(val) =>
                   setFilters((f) => ({ ...f, letter: val, filter: "a-z" }))
                 }
@@ -381,78 +479,169 @@ function ChartsPage({
               />
 
               <Button variant="secondary" size="sm" onClick={clearFilters}>
+                <RefreshCw aria-hidden="true" />
                 Clear Filters
               </Button>
-            </div>
-          </section>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setChartRefreshSeed((seed) => seed + 1)}
+              >
+                <RefreshCw aria-hidden="true" />
+                Refresh
+              </Button>
+          </div>
+          {lastUpdatedAt && (
+            <p className="mt-2 text-xs text-white/65">
+              Updated {lastUpdatedAt.toLocaleTimeString()}
+            </p>
+          )}
         </div>
-      </section>
+      </PageHeader>
+
+      <div className="mx-auto max-w-7xl px-5 pt-6 sm:px-8">
+        <AdUnit placement="leaderboard" />
+      </div>
 
       {/* Content */}
-             {loading ? (
-        <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-           ) : topAd ? (
-            <AdBanner
-              size={topAd.size}
-              destinationUrl={topAd.destinationUrl}
-              imageUrl={topAd.imageUrl}
-              altText={topAd.altText}
-              gamblingWarning={topAd.gamblingWarning}
-              companyName={topAd.companyName}
-              onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-              onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-            />
-          ) : (
-            <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
-       )}
-      <section className="max-w-7xl mx-auto px-6 xl:px-0 py-12 grid grid-cols-1 lg:grid-cols-4 gap-12">
-        {/* Main */}
-        <div className="lg:col-span-3">
+      <section className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-5 py-8 sm:px-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10 lg:py-10">
+        <div className="min-w-0 space-y-7">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {[
+              {
+                label: "In this chart",
+                value: filteredCharts.length.toLocaleString(),
+                detail: `${filters.category} ranked`,
+                icon: BarChart3,
+              },
+              {
+                label: "Weekly activity",
+                value: numberFormat.format(weeklyViews),
+                detail: "plays and views",
+                icon: Activity,
+              },
+              {
+                label: "Genres represented",
+                value: genreCount.toLocaleString(),
+                detail: "across current results",
+                icon: Music2,
+              },
+            ].map(({ label, value, detail, icon: Icon }) => (
+              <article
+                key={label}
+                className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                  <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                    <Icon aria-hidden="true" className="size-4" />
+                  </span>
+                </div>
+                <p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+              </article>
+            ))}
+          </div>
+
+          {chartError && (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span className="flex items-center gap-2 text-destructive">
+                <AlertCircle aria-hidden="true" className="size-4 shrink-0" />
+                {chartError}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setChartRefreshSeed((seed) => seed + 1);
+                }}
+              >
+                <RefreshCw aria-hidden="true" />
+                Try again
+              </Button>
+            </div>
+          )}
+
           {loading ? (
             filters.view === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <ChartCardSkeleton key={i} />
-              ))}
-            </div>
-
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <ChartCardSkeleton key={i} />
+                ))}
+              </div>
             ) : (
               <SkeletonList count={10} />
             )
           ) : filters.view === "chart" ? (
-            <div className="space-y-4">
-              <ThemedHeading>
-                {`Top ${filters.category} (${filters.sort.replace("-", " ")})`}
-              </ThemedHeading>
-
-              <div className="divide-y">
-                {charts.map((item) => (
+            <div className="overflow-hidden rounded-2xl border border-border/70 bg-card px-4 sm:px-6">
+              <div className="flex flex-wrap items-end justify-between gap-2 border-b border-border/70 py-5">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                    Weekly ranking
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold capitalize tracking-tight">
+                    Top {filters.category}
+                  </h2>
+                </div>
+                <span className="text-sm capitalize text-muted-foreground">
+                  {filters.sort.replace("-", " ")}
+                </span>
+              </div>
+              {filteredCharts.length > 0 ? (
+                <div className="divide-y divide-border/70">
+                  {filteredCharts.map((item, index) => (
                   <ChartRow
                     key={item.id}
-                    idx={item.position}
+                    idx={index + 1}
                     title={item.title}
                     artist={item.artist ?? ""}
-                    href={`/charts/${filters.category}/${item.id}`}
+                    href={itemHref(item.id)}
                     cover={item.image}
                     thisWeek={item.position}
-                    lastWeek={item.lastWeek ?? 0}
+                    lastWeek={item.lastWeek}
                   />
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  No entries match the selected chart filters.
+                </p>
+              )}
             </div>
           ) : (
-            <>
-            <ThemedHeading>
-              {filters.filter === "a-z"
-                    ? "Browse A–Z"
-                    : `${filters.filter} ${filters.category}`}
-            </ThemedHeading>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {filteredCharts.slice(0, visibleItems).map((item, idx) => (
+            <section aria-label={`${filters.category} chart results`}>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                    Discover
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold capitalize tracking-tight">
+                    {filters.filter === "a-z"
+                      ? "Browse A–Z"
+                      : `${filters.filter} ${filters.category}`}
+                  </h2>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {filteredCharts.length} {filteredCharts.length === 1 ? "result" : "results"}
+                </span>
+              </div>
+              {filteredCharts.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+                  <p className="font-medium">No chart entries match these filters.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Try another genre, letter, or release window.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {filteredCharts.slice(0, visibleItems).map((item) => (
                   <ChartCard
-                    key={idx}
+                    key={item.id}
                     id={item.id}
-                    href={`/music/${cardUrl}/${item.id}`}
+                    href={itemHref(item.id)}
                     title={item.title}
                     artist={item.artist ?? ""}
                     cover={item.image}
@@ -460,78 +649,85 @@ function ChartsPage({
                     rank={item.position}
                     peak={item.peak as number}
                     weeksOn={item.weeksOn}
+                    //lastWeek={item.lastWeek}
+                  />
+                  ))}
+                </div>
+              )}
+              <div
+                ref={loaderRef}
+                className="flex min-h-12 items-center justify-center"
+                aria-live="polite"
+              >
+                {visibleItems < filteredCharts.length && (
+                  <span className="text-sm text-muted-foreground">
+                    Scroll to load more
+                  </span>
+                )}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <aside className="min-w-0 space-y-8">
+          <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
+            <TopRecordsBoard list={trending} loading={trendingLoading} />
+            {trendingError && (
+              <p role="status" className="mt-3 text-sm text-muted-foreground">
+                {trendingError}
+              </p>
+            )}
+          </div>
+
+          <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex items-end justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                  Watch
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">Top videos</h2>
+              </div>
+              <span className="text-sm text-muted-foreground">This month</span>
+            </div>
+            {topVideos.length > 0 ? (
+              <div className="grid gap-3">
+                {topVideos.map((track) => (
+                  <TopVideoCard
+                    key={track.id}
+                    position={track.position}
+                    id={track.id}
+                    title={track.title}
+                    curator={track.artist ?? ""}
+                    href={`/videos/${track.id}`}
+                    thumbnail={track.image}
+                    videoUrl={track.videoUrl ?? ""}
+                    genre={track.genre}
+                    views={track.stats.totalViews}
                   />
                 ))}
               </div>
-
-              <div ref={loaderRef} className="h-12 flex justify-center items-center">
-                {visibleItems < filteredCharts.length && (
-                  <span className="text-gray-500">Loading more...</span>
-                )}
+            ) : topVideosLoading ? (
+              <div className="grid gap-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <TopCardSkeleton key={index} />
+                ))}
               </div>
-            </>
-          )}
-                  {loading ? (
-            <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-              ) : topAd ? (
-            <AdBanner
-               size={topAd.size}
-               destinationUrl={topAd.destinationUrl}
-               imageUrl={topAd.imageUrl}
-               altText={topAd.altText}
-               gamblingWarning={topAd.gamblingWarning}
-               companyName={topAd.companyName}
-               onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-               onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-            />
             ) : (
-              <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
+              <div className="space-y-2 rounded-xl bg-muted/50 p-4 text-sm text-muted-foreground">
+                <p>
+                  {topVideosError ??
+                    "Top videos will appear here when chart data is available."}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={refreshTopVideos}
+                >
+                  Retry top videos
+                </Button>
+              </div>
             )}
-        </div>
-
-        {/* Sidebar */}
-        <aside className="space-y-12">
-          <TopRecordsBoard list={trending} loading={loading} />
-            <AdBanner
-              size={mockAdDatabase[3].size}
-              destinationUrl={mockAdDatabase[3].destinationUrl}
-              imageUrl={mockAdDatabase[3].imageUrl}
-              altText={mockAdDatabase[3].altText}
-              gamblingWarning={mockAdDatabase[3].gamblingWarning}
-              companyName={mockAdDatabase[3].companyName}
-            />
-          <div>
-              <ThemedHeading>
-                Top 10 Videos
-              </ThemedHeading>
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
-              {topVideos.map((track, index) => (
-                <TopVideoCard
-                  key={index}
-                  position={track.position}
-                  id={track.id}
-                  title={track.title}
-                  curator={track.artist ?? ""}
-                  href={`/videos/${track.id}`}
-                  thumbnail={track.image}
-                  videoUrl={track.videoUrl as string}
-                  genre={track.genre}
-                  views={track.stats.totalViews}
-                />
-              ))}
-            </div>
-          </div>
-
-          <AdBanner
-            size={mockAdDatabase[1].size}
-            destinationUrl={mockAdDatabase[1].destinationUrl}
-            imageUrl={mockAdDatabase[1].imageUrl}
-            altText={mockAdDatabase[1].altText}
-            gamblingWarning={mockAdDatabase[1].gamblingWarning}
-            companyName={mockAdDatabase[1].companyName}
-            dismissible={true}
-            onDismiss={() => console.log("User hidden square ad placement.")}
-          />
+          </section>
         </aside>
       </section>
     </main>

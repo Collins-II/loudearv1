@@ -2,23 +2,23 @@ import { NextRequest, NextResponse } from "next/server"
 import mongoose from "mongoose"
 import { connectToDatabase } from "@/lib/database"
 import User from "@/lib/database/models/user"
+import { StanEvent } from "@/lib/database/models/stanEvent"
 import { getCurrentUser } from "@/actions/getCurrentUser"
 
-const jsonResponse = (data: any, status = 200) =>
-  NextResponse.json(data, { status })
+const jsonResponse = (data: unknown, status = 200, headers?: HeadersInit) =>
+  NextResponse.json(data, { status, headers })
 
-// ===========================================================
-// 🔥 POST /api/stan → Follow (stan) / Unfollow (unstan)
-// ===========================================================
+const NO_STORE = { "Cache-Control": "private, no-store" }
+
+// POST /api/stan → follow (stan) / unfollow (unstan)
 export async function POST(req: NextRequest) {
   try {
-    await connectToDatabase()
+    const fan = await getCurrentUser()
+    if (!fan?._id) return jsonResponse({ error: "Unauthorized" }, 401)
 
-    const session = await getCurrentUser()
-    if (!session?.email)
-      return jsonResponse({ error: "Unauthorized" }, 401)
-
-    const { artistId, action } = await req.json()
+    const body = await req.json().catch(() => null)
+    const artistId = body?.artistId
+    const action = body?.action
 
     if (!artistId || !["stan", "unstan"].includes(action))
       return jsonResponse({ error: "Invalid request" }, 400)
@@ -26,88 +26,92 @@ export async function POST(req: NextRequest) {
     if (!mongoose.Types.ObjectId.isValid(artistId))
       return jsonResponse({ error: "Invalid artist ID" }, 400)
 
-    const fanUser = await User.findOne({ email: session.email })
-    if (!fanUser) return jsonResponse({ error: "User not found" }, 404)
-
-    // ✅ Prevent self-follow (compare ObjectIds properly)
-    if (fanUser._id === artistId )
+    if (String(fan._id) === String(artistId))
       return jsonResponse({ error: "You cannot follow yourself" }, 400)
 
-    // ✅ Atomic MongoDB update
-    const updateOp =
+    await connectToDatabase()
+
+    const creator = await User.findById(artistId).select("_id role").lean()
+    if (!creator || (creator.role !== "artist" && creator.role !== "producer"))
+      return jsonResponse({ error: "Creator not found" }, 404)
+
+    const artistObjectId = new mongoose.Types.ObjectId(artistId)
+    const fanObjectId = new mongoose.Types.ObjectId(String(fan._id))
+
+    // Idempotent atomic update; the log only changes when the follow state does
+    const result = await User.updateOne(
+      { _id: fanObjectId },
       action === "stan"
-        ? { $addToSet: { stan: new mongoose.Types.ObjectId(artistId) } }
-        : { $pull: { stan: new mongoose.Types.ObjectId(artistId) } }
+        ? { $addToSet: { stan: artistObjectId } }
+        : { $pull: { stan: artistObjectId } }
+    )
 
-    await User.updateOne({ _id: fanUser._id }, updateOp)
-
-    // ✅ Count total followers
-    const stanCount = await User.countDocuments({ stan: artistId })
-    const userHasStanned = action === "stan"
-
-    // ✅ Emit Socket.IO update
-    const io = (globalThis as any).io
-    if (io) {
-      io.to(`artist:${artistId}`).emit("stan:update", {
-        artistId,
-        stanCount,
-        userHasStanned,
-      })
+    if (result.modifiedCount > 0) {
+      if (action === "stan") {
+        await StanEvent.updateOne(
+          { fan: fanObjectId, artist: artistObjectId },
+          { $setOnInsert: { fan: fanObjectId, artist: artistObjectId } },
+          { upsert: true }
+        )
+      } else {
+        await StanEvent.deleteOne({ fan: fanObjectId, artist: artistObjectId })
+      }
     }
 
-    return jsonResponse({
-      success: true,
-      message:
-        action === "stan"
-          ? "You are now following this artist 🔥"
-          : "You unfollowed this artist 👋",
-      stanCount,
-      userHasStanned,
-    })
-  } catch (error: any) {
+    const stanCount = await User.countDocuments({ stan: artistObjectId })
+    const userHasStanned = action === "stan"
+
+    // Room-wide payload carries no per-user state
+    ;(globalThis as { io?: { to: (room: string) => { emit: (e: string, p: unknown) => void } } }).io
+      ?.to(`artist:${artistId}`)
+      .emit("stan:update", { artistId, stanCount })
+
+    return jsonResponse(
+      {
+        success: true,
+        message:
+          action === "stan"
+            ? "You are now following this artist 🔥"
+            : "You unfollowed this artist 👋",
+        stanCount,
+        userHasStanned,
+      },
+      200,
+      NO_STORE
+    )
+  } catch (error) {
     console.error("Stan API error:", error)
-    if (error.name === "MongoNetworkError")
+    if (error instanceof Error && error.name === "MongoNetworkError")
       return jsonResponse({ error: "Database connection failed" }, 503)
 
     return jsonResponse({ error: "Internal Server Error" }, 500)
   }
 }
 
-// ===========================================================
-// 🧠 GET /api/stan?artistId=xxx → Fetch stan stats for artist
-// ===========================================================
+// GET /api/stan?artistId=xxx → stan stats for an artist (+ whether the viewer follows)
 export async function GET(req: NextRequest) {
   try {
-    await connectToDatabase()
+    const artistId = new URL(req.url).searchParams.get("artistId")
 
-    const session = await getCurrentUser()
-    const { searchParams } = new URL(req.url)
-    const artistId = searchParams.get("artistId")
-
-    if (!artistId)
-      return jsonResponse({ error: "Missing artistId" }, 400)
-
+    if (!artistId) return jsonResponse({ error: "Missing artistId" }, 400)
     if (!mongoose.Types.ObjectId.isValid(artistId))
       return jsonResponse({ error: "Invalid artist ID" }, 400)
 
-    const stanCount = await User.countDocuments({ stan: artistId })
-    let userHasStanned = false
+    const artistObjectId = new mongoose.Types.ObjectId(artistId)
+    const [viewer, stanCount] = await Promise.all([
+      getCurrentUser(),
+      User.countDocuments({ stan: artistObjectId }),
+    ])
 
-    if (session?.email) {
-      const fanUser = await User.findOne({ email: session.email })
-      if (fanUser) {
-        userHasStanned = fanUser.stan?.some(
-          (id) => id.toString() === artistId.toString()
-        ) as boolean;
-      }
-    }
+    const userHasStanned = !!viewer?.stan?.some(
+      (id: mongoose.Types.ObjectId) => String(id) === artistId
+    )
 
-    return jsonResponse({
-      success: true,
-      artistId,
-      stanCount,
-      userHasStanned,
-    })
+    return jsonResponse(
+      { success: true, artistId, stanCount, userHasStanned },
+      200,
+      NO_STORE
+    )
   } catch (error) {
     console.error("Stan GET API error:", error)
     return jsonResponse({ error: "Internal Server Error" }, 500)

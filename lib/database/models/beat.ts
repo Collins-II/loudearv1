@@ -22,6 +22,7 @@ export interface IBeat extends Document {
 
   bpm?: number;
   key?: string;
+  price: number;
 
   image?: string;                    // beat cover
   fileUrl: string;                   // full beat file
@@ -70,6 +71,7 @@ const BeatSchema = new Schema<IBeat>(
 
     bpm: { type: Number },
     key: { type: String, trim: true },
+    price: { type: Number, min: 0, default: 0 },
 
     image: { type: String, trim: true },
     fileUrl: { type: String, required: true },

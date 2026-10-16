@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/database";
 import Transaction from "@/lib/database/models/transactions";
 import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/actions/getCurrentUser";
 
 interface StatusInput {
   providerReference: string; // provider’s reference ID
@@ -9,10 +10,15 @@ interface StatusInput {
 export async function POST(req: Request) {
   try {
     await connectToDatabase();
+    const user = await getCurrentUser();
+    if (!user?._id) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     const body = (await req.json()) as StatusInput;
 
     const tx = await Transaction.findOne({
       "mobileMoney.externalTransactionId": body.providerReference,
+      user: user._id,
     });
 
     if (!tx) {
@@ -24,21 +30,10 @@ export async function POST(req: Request) {
 
     const provider = tx.mobileMoney?.provider;
 
-    // Simulated Sandbox Polling
-    let providerStatus = "PENDING";
-
-    if (Math.random() > 0.7) providerStatus = "SUCCESS";
-
-    if (providerStatus === "SUCCESS" && tx.status !== "completed") {
-      tx.status = "completed";
-      tx.mobileMoney!.verified = true;
-      await tx.save();
-    }
-
     return NextResponse.json({
       success: true,
-      transactionId: tx._id , // internal DB ID
-      providerReference: tx.mobileMoney?.externalTransactionId, // provider ID
+      transactionId: tx._id,
+      providerReference: tx.mobileMoney?.externalTransactionId,
       provider,
       amount: tx.amount,
       currency: tx.currency,

@@ -45,6 +45,11 @@ export interface ICampaign {
     walletId?: mongoose.Types.ObjectId;
     lastCharge?: Date;
     nextCharge?: Date;
+    reservedMinor?: number;
+    lockedMinor?: number;
+    spentMinor?: number;
+    impressionCount?: number;
+    transactionId?: mongoose.Types.ObjectId;
   };
 }
 

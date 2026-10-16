@@ -31,6 +31,9 @@ export async function POST(req: Request) {
     if (!currentUser) {
       return corsResponse({ error: "Unauthorized: Please log in first." }, 401);
     }
+    if (currentUser.role !== "artist") {
+      return corsResponse({ error: "Artist account required" }, 403);
+    }
 
     const formData = await req.formData();
 

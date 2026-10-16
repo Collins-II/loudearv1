@@ -43,6 +43,10 @@ const InteractionSchema = new Schema<IInteraction>(
 InteractionSchema.index({ user: 1, targetModel: 1, targetId: 1 });
 InteractionSchema.index({ targetModel: 1, targetId: 1, type: 1 });
 InteractionSchema.index({ type: 1, createdAt: -1 });
+InteractionSchema.index(
+  { "metadata.eventKey": 1 },
+  { unique: true, partialFilterExpression: { "metadata.eventKey": { $type: "string" } } }
+);
 
 export const Interaction =
   models.Interaction || model<IInteraction>("Interaction", InteractionSchema);

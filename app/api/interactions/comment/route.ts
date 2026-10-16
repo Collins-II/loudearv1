@@ -1,51 +1,76 @@
 // app/api/interactions/comment/route.ts
+import { Types } from "mongoose";
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/actions/getCurrentUser";
 import { connectToDatabase } from "@/lib/database";
 import { Comment } from "@/lib/database/models/comment";
-import { NextResponse } from "next/server";
+
+const MODELS = ["Song", "Album", "Video", "Post"] as const;
+const MAX_LENGTH = 1000;
 
 export async function POST(req: Request) {
   try {
-    await connectToDatabase();
-    const { id, model, userId, content, parent } = await req.json();
-
-    if (!id || !model || !userId || !content) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // ✅ Create new comment (or reply)
+    const body = await req.json().catch(() => null);
+    const id = body?.id;
+    const model = body?.model;
+    const parent = body?.parent ?? null;
+    const content = typeof body?.content === "string" ? body.content.trim() : "";
+
+    if (!MODELS.includes(model) || !Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid target" }, { status: 400 });
+    }
+    if (!content || content.length > MAX_LENGTH) {
+      return NextResponse.json(
+        { error: `Comment must be 1-${MAX_LENGTH} characters` },
+        { status: 400 }
+      );
+    }
+
+    await connectToDatabase();
+
+    if (parent) {
+      const parentComment = Types.ObjectId.isValid(parent)
+        ? await Comment.findOne({ _id: parent, targetModel: model, targetId: id })
+            .select("_id")
+            .lean()
+        : null;
+      if (!parentComment) {
+        return NextResponse.json({ error: "Parent comment not found" }, { status: 404 });
+      }
+    }
+
     const newComment = await Comment.create({
-      user: userId,
+      user: user._id,
       targetModel: model,
       targetId: id,
       parent: parent || null,
       content,
     });
 
-    // ✅ If it's a reply, update the parent comment
     if (parent) {
       await Comment.findByIdAndUpdate(parent, {
         $push: { replies: newComment._id },
       });
     }
 
-    // ✅ Populate author for return + socket broadcast
     const populated = await Comment.findById(newComment._id)
       .populate("user", "name image")
       .lean();
 
-// ✅ Emit real-time socket update
-if (globalThis.io) {
-  const room = `${model}:${id}`; // match client join
-  globalThis.io.to(room).emit("comment:new", {
-    room, // <-- send full room string
-    comment: populated,
-    parent: parent || null,
-  });
-}
-
+    const room = `${model}:${id}`;
+    globalThis.io?.to(room).emit("comment:new", {
+      room,
+      comment: populated,
+      parent: parent || null,
+    });
 
     return NextResponse.json({ success: true, comment: populated });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Error adding comment:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }

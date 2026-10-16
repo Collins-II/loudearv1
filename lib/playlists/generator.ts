@@ -3,7 +3,7 @@
 import { Song } from "@/lib/database/models/song";
 import { Playlist } from "@/lib/database/models/playlist";
 import { upsertPlaylist } from "./helpers";
-import { ListeningHistory } from "../database/models/listening-playlist";
+
 import { mostCommon } from "./utils";
 
 const AFRICAN_COUNTRIES = [
@@ -79,7 +79,7 @@ export async function generateNewReleases() {
 export async function generateForUser(
   userId: string
 ) {
-  const history = await ListeningHistory.find({
+  const history = await Playlist.find({
     user: userId,
   }).populate("song");
 

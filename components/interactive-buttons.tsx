@@ -6,6 +6,7 @@ import { useConvertPrice } from "@/lib/store/currency-utils";
 import { getCurrencySymbol, formatNumberWithCommas } from "@/lib/utils";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
+import { ECOMMERCE_ENABLED } from "@/lib/features";
 
 export default function InteractiveButtons({
   liked,
@@ -96,7 +97,7 @@ export default function InteractiveButtons({
         </motion.div>
 
         <span className="text-sm font-medium">
-          {downloading ? "Downloading..." : `Download ${price
+          {downloading ? "Downloading..." : `Download ${price && ECOMMERCE_ENABLED
                           ? `${getCurrencySymbol(selectedCurrency)}${formatNumberWithCommas(convertPrice(Number(price)))}`
                           : "Free"}`
           }

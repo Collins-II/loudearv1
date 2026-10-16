@@ -16,7 +16,7 @@ import { Info, Loader2, UploadCloud, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "../ui/checkbox";
+import { uploadToCloudinary } from "@/lib/helpers";
 
 interface ArtistProfileEditProps {
   user: {
@@ -42,7 +42,6 @@ export default function ProfileEditForm({ user, onSuccess }: ArtistProfileEditPr
   const [bio, setBio] = useState(user?.bio || "");
   const [location, setLocation] = useState(user?.location || "");
   const [phone, setPhone] = useState(user?.phone || "");
-  const [role, setRole] = useState(user?.role || "");
   const [genres, setGenres] = useState((user?.genres || []).join(", "));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
@@ -108,12 +107,21 @@ export default function ProfileEditForm({ user, onSuccess }: ArtistProfileEditPr
       formData.append("bio", bio);
       formData.append("location", location);
       formData.append("phone", phone);
-      formData.append("role", role);
       formData.append(
         "genres",
         JSON.stringify(genres.split(",").map((g) => g.trim()).filter(Boolean))
       );
-      if (imageFile) formData.append("image", imageFile);
+      if (imageFile) {
+        const imageUpload = await uploadToCloudinary(
+          imageFile,
+          "users/profiles",
+          "image"
+        );
+        if (typeof imageUpload.secure_url !== "string") {
+          throw new Error("Profile image upload did not return a valid URL.");
+        }
+        formData.append("imageUrl", imageUpload.secure_url);
+      }
 
       const response = await fetch("/api/users/update", {
         method: "PATCH",
@@ -215,21 +223,6 @@ export default function ProfileEditForm({ user, onSuccess }: ArtistProfileEditPr
               )}
             </AnimatePresence>
           </MotionDiv>
-                    <div className="flex items-start gap-3">
-            <Checkbox
-              id="artist-role"
-              checked={role === "artist"}
-              onCheckedChange={(checked) =>
-                setRole( checked ? "artist" : "fan")
-              }
-            />
-            <div className="grid gap-2">
-              <Label htmlFor="artist-role">Are you an artist?</Label>
-              <p className="text-sm text-neutral-400">
-                Confirming lets you upload original visual content.
-              </p>
-            </div>
-          </div>
           {/* Name */}
           <div>
             <Label className="text-neutral-300">Full Name *</Label>

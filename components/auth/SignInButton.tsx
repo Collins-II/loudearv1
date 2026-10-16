@@ -1,7 +1,7 @@
 // components/auth/SignInButton.tsx
 "use client";
 
-import { useSession, signOut, signIn } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -13,12 +13,14 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
-import { FcGoogle } from "react-icons/fc";
+import { RiLoginCircleFill } from "react-icons/ri";
 import { motion } from "framer-motion";
-import {  LogOut } from "lucide-react";
+import {  LogOut,   Wallet, Users, User} from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function SignInButton() {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const user = session?.user;
   const [accountOpen, setAccountOpen] = useState(false)
@@ -32,11 +34,11 @@ export default function SignInButton() {
       <motion.div
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => signIn("google")}
+        onClick={() => router.push('/auth')}
         className="cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 flex items-center justify-center gap-2 rounded-full px-4 py-2 shadow-sm"
       >
-        <FcGoogle  className="text-black" />
-        <p className="hidden lg:block text-gray-700 text-sm font-light">SignIn</p>
+        <RiLoginCircleFill  className="text-black" />
+        <p className="hidden lg:block text-gray-700 text-sm font-medium">SignIn</p>
       </motion.div>
     );
   }
@@ -48,7 +50,7 @@ export default function SignInButton() {
           <PopoverTrigger asChild>
             <Avatar className="cursor-pointer h-8 w-8">
               <AvatarImage src={user?.image as string} />
-              <AvatarFallback>User</AvatarFallback>
+              <AvatarFallback>CM</AvatarFallback>
             </Avatar>
           </PopoverTrigger>
   
@@ -59,6 +61,15 @@ export default function SignInButton() {
             </div>
   
             <div className="flex flex-col p-1">
+              <Button variant="ghost" className="w-full justify-start gap-2">
+                <User size={16} /> Profile
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-2">
+                <Users size={16} /> Creator Dashboard
+              </Button>
+              <Button variant="ghost" className="w-full justify-start gap-2">
+                <Wallet size={16} /> My Subscriptions
+              </Button>
               <Button onClick={() => signOut()} variant="ghost" className="w-full justify-start gap-2 text-red-500">
                 <LogOut size={16} /> Logout
               </Button>

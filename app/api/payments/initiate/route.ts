@@ -5,10 +5,16 @@ import { connectToDatabase } from "@/lib/database";
 import { Payment } from "@/lib/database/models/payment";
 import { initiateMtnPayment } from "@/lib/provider/mtnClient";
 import { initiateAirtelPayment } from "@/lib/provider/airtelClient";
+import { getCurrentUser } from "@/actions/getCurrentUser";
+import { ecommerceDisabledResponse } from "@/lib/ecommerce-guard";
 
 export async function POST(req: Request) {
+  const disabled = ecommerceDisabledResponse();
+  if (disabled) return disabled;
   try {
     await connectToDatabase();
+    const user = await getCurrentUser();
+    if (!user?._id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
 
     const {
@@ -26,6 +32,10 @@ export async function POST(req: Request) {
 
     if (!sender || !receiver || !amount || !phoneNumber || !country || !network) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (String(sender) !== String(user._id)) {
+      return NextResponse.json({ error: "Sender must be the authenticated user" }, { status: 403 });
     }
 
     // normalize phone

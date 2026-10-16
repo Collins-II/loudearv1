@@ -13,6 +13,7 @@ export interface IComment extends Document {
   likes: Types.ObjectId[]; // Users who liked
   replies: Types.ObjectId[]; // Nested replies
   reactions: Record<ReactionType, number>; // Reaction counts
+  reactionLog?: { user: Types.ObjectId; type: ReactionType }[]; // One reaction per user
 
   createdAt: Date;
   updatedAt: Date;
@@ -28,7 +29,7 @@ const CommentSchema = new Schema<IComment>(
     },
     targetId: { type: Schema.Types.ObjectId, required: true, refPath: "targetModel" },
     parent: { type: Schema.Types.ObjectId, ref: "Comment" },
-    content: { type: String, required: true, trim: true },
+    content: { type: String, required: true, trim: true, maxlength: 1000 },
 
     // Track likes as user references
     likes: [{ type: Schema.Types.ObjectId, ref: "User" }],

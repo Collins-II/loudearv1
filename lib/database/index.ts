@@ -1,10 +1,13 @@
 // lib/database/index.ts
 import mongoose from "mongoose";
 import dns from "node:dns/promises"; 
+import Transaction from "./models/transactions";
+import { Interaction } from "./models/interactions";
+import CampaignEvent from "./models/campaign-event";
+import { Playlist } from "./models/playlist";
 dns.setServers(["1.1.1.1", "1.0.0.1"]);
 
-
-const MONGODB_URL = process.env.MONGODB_URL || "mongodb+srv://actscloud28:556088@cluster0.9nkkkej.mongodb.net/loudear_portal?retryWrites=true&w=majority";
+const MONGODB_URL = process.env.MONGODB_URL!;
 
 interface MongooseGlobal {
   conn: typeof mongoose | null;
@@ -19,6 +22,7 @@ declare global {
 // Use global cache to prevent multiple connections in dev
 const cached = global.mongoose || { conn: null, promise: null };
 global.mongoose = cached;
+let launchIndexesPromise: Promise<unknown> | null = null;
 
 export const connectToDatabase = async () => {
   if (!MONGODB_URL) throw new Error("MONGODB_URL is missing");
@@ -45,5 +49,14 @@ export const connectToDatabase = async () => {
   }
 
   cached.conn = await cached.promise;
+  if (!launchIndexesPromise) {
+    launchIndexesPromise = Promise.all([
+      Transaction.createIndexes(),
+      Interaction.createIndexes(),
+      CampaignEvent.createIndexes(),
+      Playlist.createIndexes(),
+    ]);
+  }
+  await launchIndexesPromise;
   return cached.conn;
 };

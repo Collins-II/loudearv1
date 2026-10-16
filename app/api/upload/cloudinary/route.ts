@@ -1,4 +1,5 @@
 import cloudinary from "@/lib/cloudinary";
+import { getCurrentUser } from "@/actions/getCurrentUser";
 import { NextResponse } from "next/server";
 
 async function bufferFromFile(file: File): Promise<Buffer> {
@@ -8,6 +9,9 @@ async function bufferFromFile(file: File): Promise<Buffer> {
 
 export async function POST(req: Request) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const folder = (formData.get("folder") as string) || "uploads";

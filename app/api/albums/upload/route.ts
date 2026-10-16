@@ -35,6 +35,7 @@ export async function POST(req: Request) {
 
     const currentUser = await getCurrentUser();
     if (!currentUser) return corsResponse({ error: "Unauthorized" }, 401);
+    if (currentUser.role !== "artist") return corsResponse({ error: "Artist account required" }, 403);
 
     const formData = await req.formData();
 
@@ -208,6 +209,9 @@ export async function PUT(req: Request) {
 
     const existingAlbum = await Album.findById(albumId);
     if (!existingAlbum) return corsResponse({ error: "Album not found" }, 404);
+    if (existingAlbum.author.toString() !== currentUser._id.toString()) {
+      return corsResponse({ error: "Forbidden" }, 403);
+    }
 
     // Update basic fields
     existingAlbum.title = formData.get("title")?.toString() || existingAlbum.title;
@@ -253,6 +257,9 @@ export async function DELETE(req: Request) {
 
     const album = await Album.findById(id).populate("songs");
     if (!album) return corsResponse({ error: "Album not found" }, 404);
+    if (album.author.toString() !== currentUser._id.toString()) {
+      return corsResponse({ error: "Forbidden" }, 403);
+    }
 
     // Delete all associated songs
     for (const song of album.songs) {

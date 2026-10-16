@@ -2,6 +2,7 @@ import { connectToDatabase } from "@/lib/database";
 import Hero from "@/lib/database/models/hero";
 import { NextRequest, NextResponse } from "next/server";
 import cloudinary from "@/lib/cloudinary";
+import { getCurrentUser } from "@/actions/getCurrentUser";
 
 async function bufferFromFile(file: File): Promise<Buffer> {
   const arrayBuffer = await file.arrayBuffer();
@@ -32,6 +33,8 @@ export async function GET() {
 // ========== UPDATE HERO (PUT) ==========
 export async function PUT(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "artist") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     await connectToDatabase();
 
     const formData = await req.formData();
@@ -97,6 +100,8 @@ export async function PUT(req: NextRequest) {
 // ---------- DELETE HERO ----------
 export async function DELETE(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "artist") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     await connectToDatabase();
 
     const { searchParams } = new URL(req.url);

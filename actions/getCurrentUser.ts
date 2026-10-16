@@ -13,5 +13,5 @@ export async function getCurrentUser() {
   if (!session?.user?.email) return null;
 
   const user = await User.findOne({ email: session.user.email }).lean();
-  return user;
+  return user ? { ...user, _id: user._id.toString() } : null;
 }

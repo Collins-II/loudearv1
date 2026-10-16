@@ -14,17 +14,12 @@ export interface ISong extends Document {
   duration?: number;
   album?: string;
 
-  country: string;
   explicit?: boolean;
   bpm?: number;
   key?: string;
   mood?: string;
   label?: string;
   visibility: "public" | "private" | "unlisted";
-
-  // Playlist 
-  editorPick: boolean;
-  isOriginal: boolean;
 
   // Engagement
   likes: Types.ObjectId[];
@@ -50,23 +45,12 @@ const SongSchema = new Schema<ISong>(
     duration: { type: Number },
 
     // ➕ New fields for better metadata
-    country: { type: String},
     album: { type: String },
     explicit: { type: Boolean, default: false },
     bpm: { type: Number },
     key: { type: String, trim: true },
     mood: { type: String, trim: true },
     label: { type: String, trim: true },
-
-    // Playlist metadata
-    editorPick: {
-      type: Boolean,
-      default: false
-    },
-    isOriginal: {
-     type: Boolean,
-     default: false
-    },
 
     // ➕ Visibility for control (public/private/unlisted)
     visibility: {

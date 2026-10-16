@@ -3,6 +3,10 @@ import { connectToDatabase } from "@/lib/database";
 import { Payment } from "@/lib/database/models/payment";
 import { verifyAirtelWebhook } from "@/lib/provider/airtelClient";
 import { verifyMtnWebhook } from "@/lib/provider/mtnClient";
+import Transaction from "@/lib/database/models/transactions";
+import Topup from "@/lib/database/models/topup";
+import User from "@/lib/database/models/user";
+import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 
 
@@ -13,7 +17,11 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     // Determine provider (you can use a header or webhook path to separate providers)
-    const provider = headers["x-provider"] || headers["x-mtn-signature"] ? "mtn" : headers["x-airtel-signature"] ? "airtel" : "unknown";
+    const provider = headers["x-provider"] === "mtn" || headers["x-mtn-webhook-token"]
+      ? "mtn"
+      : headers["x-provider"] === "airtel" || headers["x-airtel-webhook-token"]
+        ? "airtel"
+        : "unknown";
 
     // Basic verification
     let verified = false;
@@ -21,7 +29,7 @@ export async function POST(req: Request) {
     else if (provider === "airtel") verified = verifyAirtelWebhook(body, headers);
     else {
       // If you can't determine provider, optionally check both or reject
-      verified = true; // or set false
+      verified = false;
     }
 
     if (!verified) return NextResponse.json({ error: "Webhook verification failed" }, { status: 401 });
@@ -34,31 +42,71 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing transaction reference" }, { status: 400 });
     }
 
-    const payment = await Payment.findOne({ reference: externalId }) || await Payment.findOne({ providerTxnId: externalId });
-    if (!payment) {
-      console.warn("Payment not found for external id", externalId);
-      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+    let newStatus: "pending" | "success" | "failed" = "pending";
+    const statusValue = body.status ?? body.transactionStatus;
+    if (statusValue) {
+      const value = String(statusValue).toLowerCase();
+      if (value.includes("success") || value === "completed") newStatus = "success";
+      else if (value.includes("fail") || value.includes("cancel")) newStatus = "failed";
     }
 
-    // Extract status from webhook depending on provider payload
-    let newStatus: any = "pending";
-    if (body.status) {
-      // many providers use status strings like "SUCCESSFUL", "PENDING", "FAILED"
-      const s = String(body.status).toLowerCase();
-      if (s.includes("success") || s.includes("successful") || s === "completed") newStatus = "success";
-      else if (s.includes("fail") || s.includes("failed") || s.includes("cancel")) newStatus = "failed";
-      else newStatus = "pending";
-    } else if (body.transactionStatus) {
-      // provider-specific key
-      const s = String(body.transactionStatus).toLowerCase();
-      if (s.includes("completed") || s.includes("success")) newStatus = "success";
-      else if (s.includes("failed")) newStatus = "failed";
-      else newStatus = "pending";
+    const payment = await Payment.findOne({ reference: externalId }) || await Payment.findOne({ providerTxnId: externalId });
+    if (!payment) {
+      const transaction = await Transaction.findOne({
+        "mobileMoney.externalTransactionId": externalId,
+        type: { $in: ["wallet_topup", "payout"] },
+      });
+      if (!transaction) {
+        console.warn("Payment not found for external id", externalId);
+        return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+      }
+
+      if (newStatus === "pending") return NextResponse.json({ success: true, status: "processing" });
+
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          const nextStatus = newStatus === "success" ? "completed" : "failed";
+          const claimed = await Transaction.findOneAndUpdate(
+            { _id: transaction._id, status: { $in: ["pending", "processing"] } },
+            { $set: { status: nextStatus, "mobileMoney.verified": newStatus === "success" } },
+            { new: true, session }
+          );
+          if (!claimed) return;
+
+          if (claimed.type === "wallet_topup") {
+            await Topup.findOneAndUpdate(
+              { transactionId: String(claimed._id) },
+              { $set: { status: newStatus === "success" ? "success" : "failed" } },
+              { session }
+            );
+            if (newStatus === "success" && claimed.user) {
+              await User.updateOne({ _id: claimed.user }, { $inc: { "wallet.balance": claimed.amount } }, { session });
+            }
+          } else if (claimed.type === "payout" && claimed.user) {
+            const adjustment: Record<string, number> = { "wallet.pendingPayout": -claimed.amount };
+            if (newStatus === "failed") adjustment["wallet.balance"] = claimed.amount;
+            await User.updateOne({ _id: claimed.user }, { $inc: adjustment }, { session });
+          }
+        });
+      } finally {
+        await session.endSession();
+      }
+
+      return NextResponse.json({ success: true, status: newStatus });
     }
 
     // update payment
+    if (payment.status === "success" && newStatus !== "success") {
+      return NextResponse.json({ error: "Cannot downgrade a successful payment" }, { status: 409 });
+    }
     payment.status = newStatus;
-    payment.metadata = { ...payment.metadata, webhookPayload: body, webhookHeaders: headers, webhookReceivedAt: new Date() };
+    payment.webhookReceived = true;
+    payment.verificationStatus = "verified";
+    payment.metadata = {
+      ...payment.metadata,
+      webhookReceivedAt: new Date(),
+    };
 
     // If provider gives providerTxnId or external reference
     if (body.transactionId || body.providerTxnId) payment.providerTxnId = body.transactionId || body.providerTxnId;

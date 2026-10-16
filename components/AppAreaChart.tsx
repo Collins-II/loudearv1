@@ -81,15 +81,6 @@ export default function AppAreaChart() {
       console.log("✅ Connected to socket server:", socket.id);
     });
 
-    socket.on("stan:update", (payload: VisitorData) => {
-      setChartData((prev) => {
-        const exists = prev.find((v) => v.month === payload.month);
-        if (exists) {
-          return prev.map((v) => (v.month === payload.month ? payload : v));
-        }
-        return [...prev, payload];
-      });
-    });
 
     return () => {
       socket.disconnect();

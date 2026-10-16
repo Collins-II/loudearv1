@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
 import {
   Music,
   ImageIcon,
   Upload,
-  CheckCircle2,
   Loader2,
-  Pause,
-  Play,
   Calendar,
   PenLine,
   Globe,
@@ -49,6 +46,15 @@ interface UploadProgress {
   [filename: string]: number;
 }
 
+const albumSteps = [
+  "Release details",
+  "Cover art",
+  "Add tracks",
+  "Track details",
+  "Release settings",
+  "Upload",
+];
+
 export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
   const [step, setStep] = useState(1);
   const socket = getSocket() as Socket | null;
@@ -74,9 +80,13 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
 
   // ── Upload State ────────────────────────────────────────────────
   const [uploading, setUploading] = useState(false);
-  const [paused, setPaused] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
 
   // ── Socket Listeners for Real-Time Feedback ─────────────────────
   useEffect(() => {
@@ -126,9 +136,7 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
     });
 
     const xhr = new XMLHttpRequest();
-    xhrRef.current = xhr;
     setUploading(true);
-    setPaused(false);
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
@@ -155,19 +163,6 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
     xhr.send(formData);
   };
 
-  const handlePauseResume = () => {
-    if (!uploading) return;
-    if (!paused) {
-      xhrRef.current?.abort();
-      setPaused(true);
-      toast("Upload paused");
-    } else {
-      toast("Resuming upload...");
-      setPaused(false);
-      void handleUpload();
-    }
-  };
-
   const resetForm = () => {
     setStep(1);
     setAlbumTitle("");
@@ -187,7 +182,6 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
     setSongs([]);
     setUploadProgress({});
     setUploading(false);
-    setPaused(false);
   };
 
   // ── Dropzones ───────────────────────────────────────────────────
@@ -224,7 +218,7 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
     return (
       <div className="mt-2">
         <Progress value={progress} className="h-2" />
-        <p className="text-xs text-neutral-400 mt-1">{progress.toFixed(1)}%</p>
+        <p         className="mt-1 text-xs text-muted-foreground">{progress.toFixed(1)}%</p>
       </div>
     );
   };
@@ -235,56 +229,65 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
   // ── Main UI ─────────────────────────────────────────────────────
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <Card className="border border-neutral-800 bg-neutral-950/80 rounded-2xl text-white shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold flex items-center gap-2">
-            <Music className="w-6 h-6 text-blue-500" /> Upload New Album — <span className="text-blue-400">LoudEar</span>
+      <Card className="mx-auto max-w-5xl overflow-hidden rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+        <CardHeader className="border-b border-border/70 px-6 py-5">
+          <CardTitle className="flex items-center gap-3 text-lg font-semibold tracking-tight">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Music className="size-5" aria-hidden="true" />
+            </span>
+            Create an album release
           </CardTitle>
+          <p className="text-sm text-muted-foreground">Complete each step to prepare your release for listeners.</p>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-8 p-6">
           {/* ── Step Indicator ────────────────────────────────────── */}
-          <div className="flex justify-center gap-3 mb-6">
-            {[1, 2, 3, 4, 5, 6].map((s) => (
-              <div
-                key={s}
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center",
-                  step >= s ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400"
-                )}
-              >
-                {step > s ? <CheckCircle2 className="w-5 h-5" /> : s}
-              </div>
-            ))}
+          <div role="group" aria-label={`Step ${step} of ${albumSteps.length}: ${albumSteps[step - 1]}`} className="space-y-3">
+            <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+              <span>Release setup</span>
+              <span>{step} of {albumSteps.length}</span>
+            </div>
+            <div className="flex gap-1.5" aria-hidden="true">
+              {albumSteps.map((label, index) => (
+                <div
+                  key={label}
+                  className={cn(
+                    "h-1.5 flex-1 rounded-full transition-colors",
+                    index < step ? "bg-emerald-500" : "bg-muted"
+                  )}
+                />
+              ))}
+            </div>
+            <p className="text-sm font-semibold">{albumSteps[step - 1]}</p>
           </div>
 
           {/* Step 1: Album Info */}
           {step === 1 && (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
               <div>
-                <Label>Album Title *</Label>
-                <Input value={albumTitle} onChange={(e) => setAlbumTitle(e.target.value)} />
+                <Label htmlFor="album-title" className="mb-2 block">Album title <span className="text-emerald-600">*</span></Label>
+                <Input id="album-title" className="bg-background" value={albumTitle} onChange={(e) => setAlbumTitle(e.target.value)} placeholder="Give your album a name" />
               </div>
               <div>
-                <Label>Artist *</Label>
-                <Input value={artist} onChange={(e) => setArtist(e.target.value)} />
+                <Label htmlFor="album-artist" className="mb-2 block">Artist <span className="text-emerald-600">*</span></Label>
+                <Input id="album-artist" className="bg-background" value={artist} onChange={(e) => setArtist(e.target.value)} placeholder="Primary artist" />
               </div>
               <div>
-                <Label>Genre</Label>
-                <Input value={genre} onChange={(e) => setGenre(e.target.value)} />
+                <Label htmlFor="album-genre" className="mb-2 block">Genre</Label>
+                <Input id="album-genre" className="bg-background" value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="e.g. Hip-hop, Pop, Jazz" />
               </div>
               <div>
-                <Label className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" /> Release Date
+                <Label htmlFor="album-release-date" className="mb-2 flex items-center gap-2">
+                  <Calendar className="size-4 text-muted-foreground" /> Release date
                 </Label>
-                <Input type="date" value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} />
+                <Input id="album-release-date" type="date" className="bg-background" value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} />
               </div>
-              <div className="col-span-2">
-                <Label>Description</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+              <div className="md:col-span-2">
+                <Label htmlFor="album-description" className="mb-2 block">Description</Label>
+                <Textarea id="album-description" className="min-h-24 resize-y bg-background" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Tell listeners about this release" />
               </div>
               <div className="col-span-2 flex justify-end pt-4">
-                <Button onClick={nextStep}>Next</Button>
+                <Button onClick={nextStep} className="rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400">Continue</Button>
               </div>
             </div>
           )}
@@ -293,20 +296,24 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
           {step === 2 && (
             <div className="space-y-4">
               <Label>Album Cover *</Label>
-              <div {...getCoverRoot()} className="border-2 border-dashed border-neutral-700 rounded-xl p-6 text-center cursor-pointer">
-                <input {...getCoverInput()} />
+              <div {...getCoverRoot()} className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center outline-none transition-colors hover:border-emerald-500/60 hover:bg-emerald-500/5 focus-visible:ring-2 focus-visible:ring-emerald-500">
+                <input {...getCoverInput()} aria-label="Choose album cover artwork" />
                 {coverPreview ? (
-                  <Image src={coverPreview} alt="Cover" width={200} height={200} className="rounded-xl mx-auto" />
+                  <div className="space-y-3">
+                    <Image src={coverPreview} alt="Album cover preview" width={200} height={200} unoptimized className="mx-auto rounded-xl shadow-md" />
+                    <p className="text-sm text-muted-foreground">{cover?.name} · Choose another image</p>
+                  </div>
                 ) : (
-                  <div className="text-neutral-400">
-                    <ImageIcon className="w-10 h-10 mb-2 mx-auto" />
-                    Drop or select album cover
+                  <div className="text-muted-foreground">
+                    <ImageIcon className="mx-auto mb-3 size-8" aria-hidden="true" />
+                    <p className="font-medium text-foreground">Drop or select your album cover</p>
+                    <p className="mt-1 text-sm">Square JPG or PNG recommended</p>
                   </div>
                 )}
               </div>
               <div className="flex justify-between pt-4">
-                <Button onClick={prevStep}>Back</Button>
-                <Button onClick={nextStep}>Next</Button>
+                <Button variant="outline" onClick={prevStep} className="rounded-full">Back</Button>
+                <Button onClick={nextStep} className="rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400">Continue</Button>
               </div>
             </div>
           )}
@@ -315,24 +322,26 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
           {step === 3 && (
             <div className="space-y-4">
               <Label>Songs *</Label>
-              <div {...getSongsRoot()} className="border-2 border-dashed border-neutral-700 rounded-xl p-6 text-center cursor-pointer">
-                <input {...getSongsInput()} />
-                <div className="text-neutral-400">
-                  <Upload className="w-10 h-10 mb-2 mx-auto" />
-                  Drop or select song files
+              <div {...getSongsRoot()} className="flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center outline-none transition-colors hover:border-emerald-500/60 hover:bg-emerald-500/5 focus-visible:ring-2 focus-visible:ring-emerald-500">
+                <input {...getSongsInput()} aria-label="Choose album audio tracks" />
+                <div className="text-muted-foreground">
+                  <Upload className="mx-auto mb-3 size-8" aria-hidden="true" />
+                  <p className="font-medium text-foreground">Add your audio tracks</p>
+                  <p className="mt-1 text-sm">Drop multiple files here or browse files</p>
                 </div>
               </div>
               {songs.map((s, i) => (
-                <div key={i} className="flex justify-between items-center border border-neutral-700 rounded-lg px-3 py-2">
-                  <span>{s.title}</span>
-                  <Button variant="ghost" size="sm" onClick={() => setStep(4)} className="text-blue-400 hover:text-blue-600">
-                    <PenLine className="w-4 h-4" />
+                <div key={`${s.file.name}-${i}`} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                  <span className="min-w-0 truncate text-sm font-medium">{s.title || s.file.name}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setStep(4)} className="text-emerald-600 hover:text-emerald-500 dark:text-emerald-400">
+                    <PenLine className="size-4" />
+                    <span className="sr-only">Edit track {i + 1}</span>
                   </Button>
                 </div>
               ))}
               <div className="flex justify-between pt-4">
-                <Button onClick={prevStep}>Back</Button>
-                <Button onClick={nextStep}>Next</Button>
+                <Button variant="outline" onClick={prevStep} className="rounded-full">Back</Button>
+                <Button onClick={nextStep} className="rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400">Continue</Button>
               </div>
             </div>
           )}
@@ -341,62 +350,67 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
           {step === 4 && (
             <div className="space-y-4">
               {songs.map((song, i) => (
-                <Card key={i} className="border border-neutral-800 bg-neutral-950/50 p-4">
-                  <Label className="text-sm text-neutral-400">Track {i + 1}</Label>
-                  <Input placeholder="Title" value={song.title} onChange={(e) => {
+                <Card key={i} className="space-y-3 rounded-xl border-border bg-background p-4 shadow-none">
+                  <Label htmlFor={`album-track-${i}`} className="text-sm font-semibold">Track {i + 1}</Label>
+                  <Input id={`album-track-${i}`} className="bg-card" placeholder="Track title" value={song.title} onChange={(e) => {
                     const s = [...songs]; s[i].title = e.target.value; setSongs(s);
                   }} />
-                  <Input placeholder="Features" className="mt-2" value={song.features} onChange={(e) => {
+                  <Input aria-label={`Featured artists for track ${i + 1}`} placeholder="Featured artists" className="bg-card" value={song.features} onChange={(e) => {
                     const s = [...songs]; s[i].features = e.target.value; setSongs(s);
                   }} />
-                  <Input placeholder="Genre" className="mt-2" value={song.genre} onChange={(e) => {
+                  <Input aria-label={`Genre for track ${i + 1}`} placeholder="Genre" className="bg-card" value={song.genre} onChange={(e) => {
                     const s = [...songs]; s[i].genre = e.target.value; setSongs(s);
                   }} />
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2">
                     <Switch checked={song.explicit} onCheckedChange={(v) => {
                       const s = [...songs]; s[i].explicit = v; setSongs(s);
                     }} />
-                    <Label>Explicit Content</Label>
+                    <Label>Explicit content</Label>
                   </div>
                 </Card>
               ))}
               <div className="flex justify-between pt-4">
-                <Button onClick={prevStep}>Back</Button>
-                <Button onClick={nextStep}>Next</Button>
+                <Button variant="outline" onClick={prevStep} className="rounded-full">Back</Button>
+                <Button onClick={nextStep} className="rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400">Continue</Button>
               </div>
             </div>
           )}
 
           {/* Step 5: Extra Album Details */}
           {step === 5 && (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
               <div>
-                <Label className="flex items-center gap-2"><Users2 className="w-4 h-4" /> Producers</Label>
-                <Input value={producers} onChange={(e) => setProducers(e.target.value)} placeholder="Comma separated" />
+              <Label htmlFor="album-producers" className="mb-2 flex items-center gap-2"><Users2 className="size-4 text-muted-foreground" /> Producers</Label>
+              <Input id="album-producers" className="bg-background" value={producers} onChange={(e) => setProducers(e.target.value)} placeholder="Separate names with commas" />
               </div>
               <div>
-                <Label className="flex items-center gap-2"><Users2 className="w-4 h-4" /> Collaborators</Label>
-                <Input value={collaborators} onChange={(e) => setCollaborators(e.target.value)} placeholder="Comma separated" />
+              <Label htmlFor="album-collaborators" className="mb-2 flex items-center gap-2"><Users2 className="size-4 text-muted-foreground" /> Collaborators</Label>
+              <Input id="album-collaborators" className="bg-background" value={collaborators} onChange={(e) => setCollaborators(e.target.value)} placeholder="Separate names with commas" />
               </div>
               <div>
-                <Label><Globe className="w-4 h-4" /> Mood</Label>
-                <Input value={mood} onChange={(e) => setMood(e.target.value)} />
+              <Label htmlFor="album-mood" className="mb-2 flex items-center gap-2"><Globe className="size-4 text-muted-foreground" /> Mood</Label>
+              <Input id="album-mood" className="bg-background" value={mood} onChange={(e) => setMood(e.target.value)} />
               </div>
               <div>
-                <Label><Building2 className="w-4 h-4" /> Label</Label>
-                <Input value={label} onChange={(e) => setLabel(e.target.value)} />
+              <Label htmlFor="album-label" className="mb-2 flex items-center gap-2"><Building2 className="size-4 text-muted-foreground" /> Label</Label>
+              <Input id="album-label" className="bg-background" value={label} onChange={(e) => setLabel(e.target.value)} />
               </div>
               <div>
-                <Label><Copyright className="w-4 h-4" /> Copyright</Label>
-                <Input value={copyright} onChange={(e) => setCopyright(e.target.value)} />
+              <Label htmlFor="album-copyright" className="mb-2 flex items-center gap-2"><Copyright className="size-4 text-muted-foreground" /> Copyright</Label>
+              <Input id="album-copyright" className="bg-background" value={copyright} onChange={(e) => setCopyright(e.target.value)} />
               </div>
               <div>
-                <Label>Visibility</Label>
+              <Label htmlFor="album-visibility" className="mb-2 block">Visibility</Label>
                 <select
-                  aria-label="visibility-select"
+                id="album-visibility"
                   value={visibility}
-                  onChange={(e) => setVisibility(e.target.value as any)}
-                  className="bg-neutral-800 rounded-lg p-2 w-full"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === "public" || value === "private" || value === "unlisted") {
+                      setVisibility(value);
+                    }
+                  }}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   <option value="private">Private</option>
                   <option value="unlisted">Unlisted</option>
@@ -404,8 +418,8 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
                 </select>
               </div>
               <div className="col-span-2 flex justify-between pt-4">
-                <Button onClick={prevStep}>Back</Button>
-                <Button onClick={nextStep}>Next</Button>
+                <Button variant="outline" onClick={prevStep} className="rounded-full">Back</Button>
+                <Button onClick={nextStep} className="rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400">Continue</Button>
               </div>
             </div>
           )}
@@ -413,32 +427,34 @@ export default function AlbumUploadForm({ onSuccess }: AlbumUploadFormProps) {
           {/* Step 6: Upload */}
           {step === 6 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-4 pt-4">
+              <div className="flex flex-col-reverse gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <Button variant="outline" onClick={prevStep} disabled={uploading} className="rounded-full">Back</Button>
                 <Button
                   onClick={handleUpload}
                   disabled={uploading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+                  className="rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400"
                 >
-                  {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {uploading ? "Uploading..." : "Upload Album"}
+                  {uploading && <Loader2 className="size-4 animate-spin" />}
+                  {uploading ? "Uploading album…" : "Submit album"}
                 </Button>
-                {uploading && (
-                  <Button onClick={handlePauseResume} variant="outline" className="flex items-center gap-2">
-                    {paused ? <><Play className="w-4 h-4" /> Resume</> : <><Pause className="w-4 h-4" /> Pause</>}
-                  </Button>
-                )}
               </div>
 
               <div className="mt-6 space-y-3">
+                {uploading && uploadProgress.total !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Release upload</p>
+                    {renderProgress("total")}
+                  </div>
+                )}
                 {cover && (
                   <div>
-                    <p className="text-sm text-neutral-300">Cover</p>
+                    <p className="text-sm text-muted-foreground">Cover</p>
                     {renderProgress(cover.name)}
                   </div>
                 )}
                 {songs.map((song) => (
                   <div key={song.file.name}>
-                    <p className="text-sm text-neutral-300">{song.title}</p>
+                    <p className="text-sm text-muted-foreground">{song.title}</p>
                     {renderProgress(song.file.name)}
                   </div>
                 ))}

@@ -3,7 +3,7 @@
 
 import { ChartItem, getCharts } from "./getCharts";
 
-export const getVideos = async (limit = 12): Promise<ChartItem[]> => {
+export const getVideos = async (limit = 16): Promise<ChartItem[]> => {
     return await getCharts({
       category: "videos",
       limit,

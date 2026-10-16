@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { MusicCard } from "./music/MusicCard";
@@ -12,8 +12,7 @@ import { ChartItem } from "@/actions/getCharts";
 import MusicCardSkeleton from "./skeletons/music-card-skeleton";
 import VideoCardSkeleton from "./skeletons/video-card-skeleton";
 import ThemedHeading from "./themed-heading";
-import AdBanner from "./ads/AdBanner";
-import { fetchAdByPlacement, MockAdData, mockAdDatabase } from "@/data/mockAds";
+import AdUnit from "@/components/ads/AdUnit";
 
 interface SectionProps {
   songs?: ChartItem[];
@@ -24,25 +23,7 @@ interface SectionProps {
 export default function LatestSection({ songs, videos }: SectionProps) {
   const [open, setOpen] = useState(false);
   const [selectedVideo] = useState<string | null>(null);
-  const [topAd, setTopAd] = useState<MockAdData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadAdvertisements() {
-      try {
-        // Fetch leaderboard placement from API simulator
-        const fetchedAd = await fetchAdByPlacement("leaderboard");
-        setTopAd(fetchedAd);
-      } catch (error) {
-        console.error("Failed loading advertising banner streams", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadAdvertisements();
-  }, []);
-
-  const isLoading = loading || (!songs?.length && !videos?.length);
+  const isLoading = !songs?.length && !videos?.length;
 
   return (
     <section className="py-16 bg-background">
@@ -86,22 +67,7 @@ export default function LatestSection({ songs, videos }: SectionProps) {
                 </motion.div>
               </div>
             </div>
-           {loading ? (
-          <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-        ) : topAd ? (
-          <AdBanner
-            size={topAd.size}
-            destinationUrl={topAd.destinationUrl}
-            imageUrl={topAd.imageUrl}
-            altText={topAd.altText}
-            gamblingWarning={topAd.gamblingWarning}
-            companyName={topAd.companyName}
-            onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-            onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-          />
-        ) : (
-          <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
-        )}
+           <AdUnit placement="leaderboard" />
             {/* Banner Ad 
             <GoogleAd slot="1234567890" />*/}
 
@@ -138,44 +104,13 @@ export default function LatestSection({ songs, videos }: SectionProps) {
               </div>
             </div>
             )}
-              {loading ? (
-          <div className="w-full max-w-[728px] h-[90px] bg-slate-100 animate-pulse rounded mx-auto" />
-        ) : topAd ? (
-          <AdBanner
-            size={topAd.size}
-            destinationUrl={topAd.destinationUrl}
-            imageUrl={topAd.imageUrl}
-            altText={topAd.altText}
-            gamblingWarning={topAd.gamblingWarning}
-            companyName={topAd.companyName}
-            onImpression={() => console.log(`[Metric Analytics]: Impression recorded for ${topAd.companyName}`)}
-            onClickThrough={() => console.log(`[Metric Analytics]: CTR Event triggered for ${topAd.companyName}`)}
-          />
-        ) : (
-          <p className="text-xs text-gray-400">No campaign inventory running for this slot sizing.</p>
-        )}
+              <AdUnit placement="leaderboard" />
           </div>
 
           
           <aside className="hidden lg:flex flex-col gap-6">
-          <AdBanner
-          size={mockAdDatabase[1].size}
-          destinationUrl={mockAdDatabase[1].destinationUrl}
-          imageUrl={mockAdDatabase[1].imageUrl}
-          altText={mockAdDatabase[1].altText}
-          gamblingWarning={mockAdDatabase[1].gamblingWarning}
-          companyName={mockAdDatabase[1].companyName}
-          dismissible={true}
-          onDismiss={() => console.log("User hidden square ad placement.")}
-        />
-         <AdBanner
-          size={mockAdDatabase[3].size}
-          destinationUrl={mockAdDatabase[3].destinationUrl}
-          imageUrl={mockAdDatabase[3].imageUrl}
-          altText={mockAdDatabase[3].altText}
-          gamblingWarning={mockAdDatabase[3].gamblingWarning}
-          companyName={mockAdDatabase[3].companyName}
-        />
+          <AdUnit placement="square" />
+         <AdUnit placement="leaderboard" />
             
            {/* <GoogleAd slot="1234567890" />
             <GoogleAd slot="1234567890" />*/}

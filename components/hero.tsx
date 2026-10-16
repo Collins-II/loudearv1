@@ -39,7 +39,7 @@ const slides: Slide[] = [
     title: "Global Playlists",
     subtitle: "The biggest songs making waves worldwide",
     image: img3,
-    link: "/playlists"
+    link: "/playlist"
   },
 ];
 

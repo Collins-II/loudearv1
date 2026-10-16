@@ -1,5 +1,3 @@
-"use server";
-
 import { Types, Document, FlattenMaps } from "mongoose";
 import { connectToDatabase } from "@/lib/database";
 import { Comment } from "@/lib/database/models/comment";
@@ -14,6 +12,7 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import User from "@/lib/database/models/user";
 import Beat from "@/lib/database/models/beat";
+import { Interaction } from "@/lib/database/models/interactions";
 dayjs.extend(isoWeek);
 
 /* ------------------------------------------------------------------ */
@@ -108,6 +107,8 @@ export interface BaseSerialized {
   updatedAt: string;
   totalViews: number;
   viewCount: number;
+  totalPlays: number;
+  weeklyPlays: number;
   likeCount: number;
   downloadCount: number;
   shareCount: number;
@@ -156,19 +157,20 @@ export interface VideoSerialized extends BaseSerialized {
 }
 
 export interface LicenseTier {
-  name: string;       // e.g. "MP3 Lease"
-  price: number;      // number only
-  fileUrl: string;    // downloadable asset
-  perks?: string[];   // optional perks list
+  id: string;
+  title: string;
+  price: number;
+  description?: string;
+  usageRights: string[];
 }
 
 export interface BeatSerialized extends BaseSerialized {
   bpm: number | null;
   key: string | null;
   producerName: string;
-  fileUrl: string;
-  audioUrl: string;
+  visibility: "public" | "private" | "unlisted";
   audioSnippet: string;
+  previewUrl: string | null;
   licenses: LicenseTier[];
   releaseDate?: string | null;
   trendingPosition?: number | null;
@@ -216,11 +218,13 @@ export async function serializeItem<T extends ItemType>(
     genre: doc.genre ?? "Unknown",
     description: doc.description ?? "",
     tags: Array.isArray(doc.tags) ? doc.tags : [],
-    coverUrl: doc.coverUrl ?? doc.thumbnailUrl ?? "",
+    coverUrl: doc.coverUrl ?? doc.thumbnailUrl ?? doc.image ?? "",
     createdAt: doc.createdAt?.toISOString?.() ?? new Date().toISOString(),
     updatedAt: doc.updatedAt?.toISOString?.() ?? new Date().toISOString(),
     totalViews: 0,
     viewCount: 0,
+    totalPlays: 0,
+    weeklyPlays: 0,
     likeCount: doc.likes?.length ?? doc.likeCount ?? 0,
     downloadCount: doc.downloads?.length ?? doc.downloadCount ?? 0,
     shareCount: doc.shares?.length ?? doc.shareCount ?? 0,
@@ -258,17 +262,26 @@ export async function serializeItem<T extends ItemType>(
   }
 
   if (type === "Beat") {
-  return {
-    ...base,
-    bpm: doc.bpm ?? null,
-    key: doc.key ?? null,
-    producer: doc.producer ?? null,
-    fileUrl: doc.fileUrl ?? "",
-    previewUrl: doc.previewUrl ?? null,
-    licenses: Array.isArray(doc.licenses) ? doc.licenses : [],
-    releaseDate: doc.releaseDate ?? null,
-  } as any;
-}
+    const licenseTiers = Array.isArray(doc.licenseTiers) ? doc.licenseTiers : [];
+    return {
+      ...base,
+      producerName: doc.producerName ?? doc.author?.stageName ?? doc.author?.name ?? "Unknown producer",
+      visibility: doc.visibility ?? (doc.published ? "public" : "private"),
+      bpm: doc.bpm ?? null,
+      key: doc.key ?? null,
+      producer: doc.author ?? null,
+      audioSnippet: doc.previewUrl ?? "",
+      previewUrl: doc.previewUrl ?? null,
+      licenses: licenseTiers.map((tier: Record<string, unknown>) => ({
+        id: String(tier.id ?? ""),
+        title: String(tier.title ?? tier.id ?? "Beat license"),
+        price: tier.price ?? 0,
+        description: typeof tier.description === "string" ? tier.description : "",
+        usageRights: Array.isArray(tier.usageRights) ? tier.usageRights : [],
+      })),
+      releaseDate: doc.createdAt?.toISOString?.() ?? null,
+    } as any;
+  }
 
 
   return {
@@ -332,7 +345,13 @@ export async function incrementInteraction(
 
   if (type === "view") {
     const nowWeek = `${dayjs().year()}-W${String(dayjs().isoWeek()).padStart(2, "0")}`;
-    await Model.updateOne({ _id: id }, { $addToSet: { views: new Types.ObjectId(userId) } });
+    if (userId) {
+      if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ObjectId");
+      await Model.updateOne(
+        { _id: id },
+        { $addToSet: { views: new Types.ObjectId(userId) } }
+      );
+    }
     await ViewAnalytics.updateOne(
       { itemId: id, contentModel: model, week: nowWeek },
       { $inc: { views: 1 } },
@@ -376,7 +395,7 @@ export async function getItemWithStats(model: ItemType, id: string) {
 
     let query = Model.findById(id).populate({
       path: "author",
-      select: "_id name image role stan",
+      select: "_id name image stageName role stan",
     });
     if (model === "Album") {
       query = query.populate({
@@ -413,20 +432,26 @@ export async function getItemWithStats(model: ItemType, id: string) {
         : [];
 
     const sinceDate = dayjs().subtract(365, "day").toDate();
-    const recentItems = await Model.find({ createdAt: { $gte: sinceDate } })
-      .select("_id views likes shares downloads")
-      .lean();
-
-    const scored = recentItems
-      .map((i) => ({
-        _id: i._id,
-        trendingScore:
-          (i.views?.length ?? 0) +
-          (i.likes?.length ?? 0) * 2 +
-          (i.shares?.length ?? 0) * 3 +
-          (i.downloads?.length ?? 0) * 1.5,
-      }))
-      .sort((a, b) => b.trendingScore - a.trendingScore);
+    const scored = await Model.aggregate<{
+      _id: Types.ObjectId;
+      trendingScore: number;
+    }>([
+      { $match: { createdAt: { $gte: sinceDate } } },
+      {
+        $project: {
+          _id: 1,
+          trendingScore: {
+            $add: [
+              { $size: { $ifNull: ["$views", []] } },
+              { $multiply: [{ $size: { $ifNull: ["$likes", []] } }, 2] },
+              { $multiply: [{ $size: { $ifNull: ["$shares", []] } }, 3] },
+              { $multiply: [{ $size: { $ifNull: ["$downloads", []] } }, 1.5] },
+            ],
+          },
+        },
+      },
+      { $sort: { trendingScore: -1, _id: 1 } },
+    ]);
 
     const trendingIndex = scored.findIndex((s) => String(s._id) === id);
     const trendingPosition = trendingIndex >= 0 ? trendingIndex + 1 : null;
@@ -471,7 +496,26 @@ export async function getItemWithStats(model: ItemType, id: string) {
 
     const { totalViews } = await getViewCounts(id, model)
 
-    const [currentWeekData, prevWeekData] = await Promise.all([
+    const albumTrackIds =
+      model === "Album" && Array.isArray(doc.songs)
+        ? doc.songs
+            .map((song: Types.ObjectId | { _id: Types.ObjectId }) =>
+              String("_id" in song ? song._id : song)
+            )
+            .filter(Types.ObjectId.isValid)
+            .map((songId: string) => new Types.ObjectId(songId))
+        : [];
+    const playMatch =
+      model === "Album" && albumTrackIds.length > 0
+        ? {
+            $or: [
+              { targetModel: "Album", targetId: new Types.ObjectId(id) },
+              { targetModel: "Song", targetId: { $in: albumTrackIds } },
+            ],
+          }
+        : { targetModel: model, targetId: new Types.ObjectId(id) };
+
+    const [currentWeekData, prevWeekData, totalPlays, weeklyPlays] = await Promise.all([
       ViewAnalytics.findOne<IViewAnalytics>({
         itemId: id,
         contentModel: model,
@@ -482,6 +526,12 @@ export async function getItemWithStats(model: ItemType, id: string) {
         contentModel: model,
         week: prevWeek,
       }).lean(),
+      Interaction.countDocuments({ ...playMatch, type: "play" }),
+      Interaction.countDocuments({
+        ...playMatch,
+        type: "play",
+        createdAt: { $gte: dayjs().startOf("isoWeek").toDate() },
+      }),
     ]);
 
     const currentViewCount = currentWeekData?.views ?? 0;
@@ -495,7 +545,8 @@ if (doc.author?._id) {
 
 const serialized = (await serializeItem(
   { ...doc, commentCount, latestComments, author: { ...doc.author, stanCount } },
-  model
+  model,
+  false
 )) as SongSerialized | AlbumSerialized | VideoSerialized | BeatSerialized;
 
 
@@ -508,6 +559,8 @@ const serialized = (await serializeItem(
       totalViews,
       viewCount: currentViewCount,
       previousViewCount,
+      totalPlays,
+      weeklyPlays,
     };
   } catch (error: unknown) {
     console.error("GET_ITEMS_ERROR", error);
@@ -518,7 +571,7 @@ const serialized = (await serializeItem(
 /* ------------------------------------------------------------------ */
 /* SHORTCUTS */
 /* ------------------------------------------------------------------ */
-export const getBeatWithStats = async (id: string) => getItemWithStats("Beat", id);
-export const getSongWithStats = async (id: string) => getItemWithStats("Song", id);
-export const getAlbumWithStats = async (id: string) => getItemWithStats("Album", id);
-export const getVideoWithStats = async (id: string) => getItemWithStats("Video", id);
+export const getBeatWithStats = (id: string) => getItemWithStats("Beat", id);
+export const getSongWithStats = (id: string) => getItemWithStats("Song", id);
+export const getAlbumWithStats = (id: string) => getItemWithStats("Album", id);
+export const getVideoWithStats = (id: string) => getItemWithStats("Video", id);

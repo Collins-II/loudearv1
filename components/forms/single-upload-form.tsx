@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import Image from "next/image";
 import { Textarea } from "../ui/textarea";
 
 interface UploadProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
 //const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
@@ -60,6 +60,12 @@ export default function SingleUploadForm({ onSuccess }: UploadProps) {
     },
   });
 
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
+
   // Validation
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -100,7 +106,7 @@ export default function SingleUploadForm({ onSuccess }: UploadProps) {
       if (!res.ok) throw new Error("Upload failed");
 
       toast.success("Single uploaded successfully!");
-      onSuccess();
+      onSuccess?.();
     } catch (err: any) {
       toast.error(err.message || "Error uploading single");
     } finally {
@@ -110,154 +116,199 @@ export default function SingleUploadForm({ onSuccess }: UploadProps) {
 
   return (
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="rounded-2xl border-none md:border md:border-neutral-800 bg-neutral-900/80 text-white shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-white">
-            Upload Single
+      <Card className="overflow-hidden rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+        <CardHeader className="border-b border-border/70 px-6 py-5">
+          <CardTitle className="text-lg font-semibold tracking-tight">
+            Release details
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Add the information listeners will see on your track.
+          </p>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-8 p-6">
           {/* Metadata */}
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
             <div>
-              <Label className="text-neutral-300">Song Title *</Label>
+              <Label htmlFor="song-title" className="mb-2 block">Song title <span className="text-emerald-600">*</span></Label>
               <Input
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-title"
+                className="bg-background"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Song title"
+                placeholder="Give your track a name"
+                aria-invalid={Boolean(errors.title)}
               />
-              {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
+              {errors.title && <p role="alert" className="mt-1.5 text-sm text-destructive">{errors.title}</p>}
             </div>
             <div>
-              <Label className="text-neutral-300">Artist *</Label>
+              <Label htmlFor="song-artist" className="mb-2 block">Artist <span className="text-emerald-600">*</span></Label>
               <Input
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-artist"
+                className="bg-background"
                 value={artist}
                 onChange={(e) => setArtist(e.target.value)}
-                placeholder="Artist name"
+                placeholder="Primary artist"
+                aria-invalid={Boolean(errors.artist)}
               />
-              {errors.artist && <p className="text-red-500 text-sm">{errors.artist}</p>}
+              {errors.artist && <p role="alert" className="mt-1.5 text-sm text-destructive">{errors.artist}</p>}
             </div>
             <div>
-              <Label className="text-neutral-300">Feature (Optional)</Label>
+              <Label htmlFor="song-features" className="mb-2 block">Featured artists</Label>
               <Input
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-features"
+                className="bg-background"
                 value={features}
                 onChange={(e) => setFeatures(e.target.value)}
-                placeholder="Feature names eg. John, Dave"
+                placeholder="Add collaborators"
               />
             </div>
             <div>
-              <Label className="text-neutral-300">Album</Label>
+              <Label htmlFor="song-album" className="mb-2 block">Album</Label>
               <Input
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-album"
+                className="bg-background"
                 value={album}
                 onChange={(e) => setAlbum(e.target.value)}
-                placeholder="Optional album name"
+                placeholder="Album title (optional)"
               />
             </div>
             <div>
-              <Label className="text-neutral-300">Genre</Label>
+              <Label htmlFor="song-genre" className="mb-2 block">Genre</Label>
               <Input
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-genre"
+                className="bg-background"
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
-                placeholder="Hip-Hop, Pop, Jazz..."
+                placeholder="e.g. Hip-hop, Pop, Jazz"
               />
             </div>
             <div>
-              <Label className="text-neutral-300">Language</Label>
+              <Label htmlFor="song-language" className="mb-2 block">Language</Label>
               <Input
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-language"
+                className="bg-background"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                placeholder="English, Spanish..."
+                placeholder="e.g. English"
               />
             </div>
             <div>
-              <Label className="text-neutral-300">Release Date</Label>
+              <Label htmlFor="song-release-date" className="mb-2 block">Release date</Label>
               <Input
+                id="song-release-date"
                 type="date"
-                className="bg-neutral-800 border-neutral-700 text-white"
+                className="bg-background"
                 value={releaseDate}
                 onChange={(e) => setReleaseDate(e.target.value)}
               />
             </div>
-             <div className="col-span-2">
-              <Label className="flex items-center gap-2 text-neutral-300">
-                <Info className="w-4 h-4" /> Description
+             <div className="md:col-span-2">
+              <Label htmlFor="song-description" className="mb-2 flex items-center gap-2">
+                <Info className="size-4 text-muted-foreground" /> Description
               </Label>
               <Textarea
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-description"
+                className="min-h-24 resize-y bg-background"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder="Tell listeners a little about this release"
               />
             </div>
             <div>
-              <Label className="text-neutral-300">Tags</Label>
+              <Label htmlFor="song-tags" className="mb-2 block">Tags</Label>
               <Input
-                className="bg-neutral-800 border-neutral-700 text-white"
+                id="song-tags"
+                className="bg-background"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="chill, summer, party"
+                placeholder="Separate tags with commas"
               />
             </div>
-            <div className="flex items-center gap-2 mt-6">
+            <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-4 py-3">
               <input
-                aria-label="checkbox-button"
+                id="song-explicit"
                 type="checkbox"
                 checked={explicit}
                 onChange={(e) => setExplicit(e.target.checked)}
-                className="accent-blue-600"
+                className="size-4 accent-emerald-500"
               />
-              <Label className="text-neutral-300">Explicit Content</Label>
+              <Label htmlFor="song-explicit" className="cursor-pointer">Explicit content</Label>
             </div>
           </div>
 
-          {/* Cover Upload */}
-          <div
-            {...getCoverRoot()}
-            className="border-2 border-dashed border-neutral-700 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500"
-          >
-            <input {...getCoverInput()} />
-            {coverPreview ? (
-              <Image src={coverPreview} width={40} height={40} alt="Cover preview" className="mx-auto max-h-40 rounded-lg shadow-md" />
-            ) : (
-              <div className="flex flex-col items-center text-neutral-400">
-                <UploadCloud className="w-8 h-8 mb-2" />
-                <p>Upload cover image</p>
+          <div className="space-y-4 border-t border-border/70 pt-6">
+            <div>
+              <h3 className="text-base font-semibold">Files and artwork</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Add your audio master and square cover art.</p>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div
+                {...getCoverRoot()}
+                className="group flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-5 text-center outline-none transition-colors hover:border-emerald-500/60 hover:bg-emerald-500/5 focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <input {...getCoverInput()} aria-label="Choose cover artwork" />
+                {coverPreview ? (
+                  <div className="flex items-center gap-4 text-left">
+                    <Image src={coverPreview} width={96} height={96} alt="Cover preview" unoptimized className="size-24 rounded-lg object-cover shadow-sm" />
+                    <div className="min-w-0">
+                      <p className="font-medium">Artwork selected</p>
+                      <p className="mt-1 max-w-44 truncate text-sm text-muted-foreground">{coverFile?.name}</p>
+                      <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">Choose another image</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
+                      <UploadCloud className="size-5" aria-hidden="true" />
+                    </span>
+                    <p className="font-medium">Add cover artwork <span className="text-emerald-600">*</span></p>
+                    <p className="mt-1 text-sm text-muted-foreground">Drag an image here or browse files</p>
+                    <p className="mt-3 text-xs text-muted-foreground">JPG or PNG recommended</p>
+                  </>
+                )}
+                {errors.cover && <p role="alert" className="mt-2 text-sm text-destructive">{errors.cover}</p>}
               </div>
-            )}
-            {errors.cover && <p className="text-red-500 text-sm">{errors.cover}</p>}
+
+              <div
+                {...getAudioRoot()}
+                className="group flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-5 text-center outline-none transition-colors hover:border-emerald-500/60 hover:bg-emerald-500/5 focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <input {...getAudioInput()} aria-label="Choose audio file" />
+                {file ? (
+                  <>
+                    <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <UploadCloud className="size-5" aria-hidden="true" />
+                    </span>
+                    <p className="max-w-full truncate font-medium">{file.name}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{(file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                    <p className="mt-3 text-xs font-medium text-emerald-600 dark:text-emerald-400">Choose another audio file</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
+                      <UploadCloud className="size-5" aria-hidden="true" />
+                    </span>
+                    <p className="font-medium">Add audio master <span className="text-emerald-600">*</span></p>
+                    <p className="mt-1 text-sm text-muted-foreground">Drag an audio file here or browse files</p>
+                    <p className="mt-3 text-xs text-muted-foreground">High-quality audio recommended</p>
+                  </>
+                )}
+                {errors.file && <p role="alert" className="mt-2 text-sm text-destructive">{errors.file}</p>}
+              </div>
+            </div>
           </div>
 
-          {/* Audio Upload */}
-          <div
-            {...getAudioRoot()}
-            className="border-2 border-dashed border-neutral-700 rounded-xl p-6 text-center cursor-pointer hover:border-green-500"
-          >
-            <input {...getAudioInput()} />
-            {file ? (
-              <p className="font-medium text-green-400">{file.name}</p>
-            ) : (
-              <div className="flex flex-col items-center text-neutral-400">
-                <UploadCloud className="w-8 h-8 mb-2" />
-                <p>Upload audio file</p>
-              </div>
-            )}
-            {errors.file && <p className="text-red-500 text-sm">{errors.file}</p>}
+          <div className="flex flex-col-reverse gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">Required fields are marked with an asterisk.</p>
+            <Button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="w-full rounded-full bg-emerald-500 px-6 font-semibold text-black hover:bg-emerald-400 sm:w-auto"
+            >
+              {uploading && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+              {uploading ? "Uploading track…" : "Submit release"}
+            </Button>
           </div>
-
-          {/* Upload Button */}
-          <Button
-            onClick={handleUpload}
-            disabled={uploading}
-            className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {uploading && <Loader2 className="animate-spin w-5 h-5 mr-2" />}
-            {uploading ? "Uploading..." : "Upload Single"}
-          </Button>
         </CardContent>
       </Card>
     </motion.div>

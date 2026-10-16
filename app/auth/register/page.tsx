@@ -2,20 +2,33 @@ import { getCurrentUser } from "@/actions/getCurrentUser";
 import { RegisterForm } from "@/components/auth/auth-form"
 import { redirect } from "next/navigation";
 
-const Register = async () => {
+function safeCallbackUrl(value?: string | string[]) {
+  const callbackUrl = Array.isArray(value) ? value[0] : value;
+  if (
+    !callbackUrl?.startsWith("/") ||
+    callbackUrl.startsWith("//") ||
+    callbackUrl.includes("\\") ||
+    callbackUrl === "/auth" ||
+    callbackUrl.startsWith("/auth/")
+  ) {
+    return "/";
+  }
+  return callbackUrl;
+}
 
+const Register = async ({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string | string[] }>;
+}) => {
+  const params = await searchParams;
+  const callbackUrl = safeCallbackUrl(params.callbackUrl);
   const user = await getCurrentUser();
   if (!user?.isNewUser) {
-    redirect("/")
+    redirect(callbackUrl);
   }
 
-  return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm md:max-w-3xl pt-16">
-        <RegisterForm user={ user as any } />
-      </div>
-    </div>
-  )
+  return <RegisterForm user={user} callbackUrl={callbackUrl} />;
 }
 
 export default Register;

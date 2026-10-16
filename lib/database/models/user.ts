@@ -8,7 +8,7 @@ import mongoose, { Schema, Document, Model, Types } from "mongoose";
 export interface IWallet {
   balance: number;
   currency?: string;
-  locked?: boolean;
+  locked?: number;
   pendingPayout?: number;
   history?: Types.ObjectId[]; // optional references to transactions
 }
@@ -18,8 +18,9 @@ export interface IUser extends Document {
   name: string;
   email: string;
   image?: string;
-  role: "fan" | "artist";
-  isNewUser?: false;
+  bannerImage?: string;
+  role: "fan" | "artist" | "producer";
+  isNewUser?: boolean;
   bio?: string;
   location?: string;
   phone?: string;
@@ -91,9 +92,10 @@ const UserSchema = new Schema<IUser>(
       index: true,
     },
     image: { type: String },
+    bannerImage: { type: String, trim: true },
     role: {
       type: String,
-      enum: ["fan", "artist"],
+      enum: ["fan", "artist", "producer"],
       default: "fan",
       index: true,
     },
@@ -167,6 +169,8 @@ const UserSchema = new Schema<IUser>(
 
 /** 🔍 Index for faster queries */
 UserSchema.index({ name: "text", stageName: "text", genres: 1 });
+// Follower counts and lookups query by the followed artist id
+UserSchema.index({ stan: 1 });
 
 /** 🧠 Static helper methods */
 UserSchema.statics.findByEmail = function (email: string) {

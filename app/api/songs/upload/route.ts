@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     await connectToDatabase();
     const currentUser = await getCurrentUser();
     if (!currentUser) return corsResponse({ error: "Unauthorized" }, 401);
+    if (currentUser.role !== "artist") return corsResponse({ error: "Artist account required" }, 403);
 
     const formData = await req.formData();
 
@@ -149,6 +150,9 @@ export async function PUT(req: Request) {
 
     const existingSong = await Song.findById(songId);
     if (!existingSong) return corsResponse({ error: "Song not found" }, 404);
+    if (existingSong.author.toString() !== currentUser._id.toString()) {
+      return corsResponse({ error: "Forbidden" }, 403);
+    }
 
     // Update fields
     existingSong.title = formData.get("title")?.toString() || existingSong.title;
@@ -216,6 +220,9 @@ export async function DELETE(req: Request) {
 
     const song = await Song.findById(id);
     if (!song) return corsResponse({ error: "Song not found" }, 404);
+    if (song.author.toString() !== currentUser._id.toString()) {
+      return corsResponse({ error: "Forbidden" }, 403);
+    }
 
     // Try deleting Cloudinary assets
     if (song.coverUrl) {

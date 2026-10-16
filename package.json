@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096 --loader ts-node/esm --trace-warnings --no-warnings\" ts-node server.mts",
-    "build": "next build && tsc --project tsconfig.server.json",
-    "start:socket": "NODE_ENV=production node dist/server.mts",
-    "start": "next start",
-    "lint": "next lint"
+    "build": "next build --webpack && tsc --project tsconfig.server.json",
+    "start:socket": "cross-env NODE_ENV=production node .server-build/server.mjs",
+    "start:next": "next start",
+    "start": "cross-env NODE_ENV=production node .server-build/server.mjs",
+    "lint": "eslint app actions components data lib scripts server.mts proxy.ts next.config.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

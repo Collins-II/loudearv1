@@ -14,6 +14,9 @@ import { Types } from "mongoose";
 const PLATFORM_FEE_PCT = Number(process.env.PLATFORM_FEE_PCT ?? "10"); // Default 10%
 
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   try {
     await connectToDatabase();
     const user = await getCurrentUser();

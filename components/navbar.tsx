@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import NavSidebar from "./sidebar";
 import Image from "next/image";
 import CartSidebar from "./cart-sidebar";
+import { ECOMMERCE_ENABLED } from "@/lib/features";
 import ThemeToggle from "./ui/theme-toggle";
 import UploadDropdown from "./ui/upload-dropdown";
 
@@ -47,7 +48,7 @@ export default function Navbar() {
     { label: "Music", href: "/music" },
     { label: "Videos", href: "/videos" },
     /*{ label: "SoundHub", href: "/sound-hub" },*/
-    { label: "Playlists", href: "/playlists" },
+    { label: "Playlists", href: "/playlist" },
     { label: "Blog", href: "/blog" },
   ];
 
@@ -291,7 +292,7 @@ export default function Navbar() {
 
 {/* Cart Sidebar */}
 <AnimatePresence>
-  {cartOpen && (
+  {ECOMMERCE_ENABLED && cartOpen && (
     <>
       {/* Overlay */}
       <motion.div

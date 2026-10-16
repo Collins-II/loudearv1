@@ -26,6 +26,7 @@ export interface ITransaction extends Document {
   paymentMethod: "mobile_money" | "stripe" | "manual";
 
   description?: string;
+  metadata?: Record<string, unknown>;
 
   mobileMoney?: {
     provider?: "MTN" | "Airtel" | "Zamtel";
@@ -64,7 +65,6 @@ const TransactionSchema = new Schema<ITransaction>(
         "holding",
       ],
       required: true,
-      index: true,
     },
 
     product: {
@@ -92,12 +92,13 @@ const TransactionSchema = new Schema<ITransaction>(
     },
 
     description: { type: String, maxlength: 500 },
+    metadata: { type: Schema.Types.Mixed, default: {} },
 
     // --------------------------
     // MOBILE MONEY METADATA
     // --------------------------
     mobileMoney: {
-      provider: { type: String, enum: ["MTN", "Airtel", "Zamtel"] },
+      provider: { type: String, enum: ["MTN", "AIRTEL", "Airtel", "Zamtel"] },
       phoneNumber: { type: String },
       externalTransactionId: { type: String },
       internalReference: { type: String },
@@ -123,6 +124,10 @@ TransactionSchema.index({ user: 1, createdAt: -1 });
 TransactionSchema.index({ paymentMethod: 1, status: 1 });
 TransactionSchema.index({ "mobileMoney.provider": 1 });
 TransactionSchema.index({ "product.type": 1, "product.id": 1 });
+TransactionSchema.index(
+  { user: 1, "metadata.idempotencyKey": 1 },
+  { unique: true, partialFilterExpression: { "metadata.idempotencyKey": { $type: "string" } } }
+);
 
 /** 🔍 Helper to fetch all a user's transactions */
 TransactionSchema.statics.findUserTransactions = function (userId: Types.ObjectId) {

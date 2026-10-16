@@ -78,7 +78,6 @@ const RoyaltySplitSchema = new Schema<IRoyaltySplit>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
 
     collaboratorName: { type: String, required: true, trim: true },
@@ -105,8 +104,6 @@ RoyaltySplitSchema.index({ mediaId: 1, collaboratorUserId: 1 });
 RoyaltySplitSchema.index({ mediaId: 1, collaboratorEmail: 1 });
 RoyaltySplitSchema.index({ mediaId: 1, percent: 1 });
 RoyaltySplitSchema.index({ mediaType: 1, mediaId: 1 });
-RoyaltySplitSchema.index({ ownerId: 1 });
-
 /** Legacy backward compatibility */
 RoyaltySplitSchema.index({ songId: 1, ownerId: 1 });
 

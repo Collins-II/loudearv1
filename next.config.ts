@@ -12,7 +12,7 @@ const withPWA = withPWAInit({
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [
+    remotePatterns: [
       "www.facebook.com",
       "flagcdn.com",
       "images.pexels.com",
@@ -25,21 +25,15 @@ const nextConfig = {
       "maps.googleapis.com",
       "res.cloudinary.com",
       "pngimg.com",
-      "image-cdn-fa.spotifycdn.com",
-      "mosaic.scdn.co",
-      "image-cdn-ak.spotifycdn.com",
-      "i.scdn.co",
-    ],
+    ].map((hostname) => ({ protocol: "https" as const, hostname })),
   },
-  api: {
-    bodyParser: {
-      sizeLimit: "200mb", // or higher if needed
-    },
+  async redirects() {
+    return [
+      { source: "/playlists", destination: "/playlist", permanent: true },
+      { source: "/playlists/:id", destination: "/playlist", permanent: true },
+    ];
   },
-  // ✅ This ensures .next/trace is not locked during build
-  experimental: {
-    outputFileTracingRoot: process.cwd(),
-  },
+  outputFileTracingRoot: process.cwd(),
 };
 
 export default withPWA(nextConfig);

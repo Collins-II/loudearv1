@@ -21,8 +21,7 @@ export async function GET(req: NextRequest) {
   const artist = searchParams.get("artist");
 
   // Helper for building query
-  const buildQuery = (typeName: "song" | "album" | "video") => {
-    console.log("Media_TYPENAME", typeName)
+  const buildQuery = () => {
     const q: any = { visibility: "public" };
     if (genre) q.genre = genre;
     if (artist) q.artist = artist;
@@ -33,7 +32,7 @@ export async function GET(req: NextRequest) {
     let results: any[] = [];
 
     if (!type || type === "song") {
-      const songs = await Song.find(buildQuery("song"))
+      const songs = await Song.find(buildQuery())
         .limit(limit)
         .sort({ createdAt: -1 })
         .select("_id title artist genre fileUrl coverUrl duration album createdAt")
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!type || type === "album") {
-      const albums = await Album.find(buildQuery("album"))
+      const albums = await Album.find(buildQuery())
         .limit(limit)
         .sort({ createdAt: -1 })
         .select("_id title artist genre coverUrl releaseDate totalSongs createdAt")
@@ -55,7 +54,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!type || type === "video") {
-      const videos = await Video.find(buildQuery("video"))
+      const videos = await Video.find(buildQuery())
         .limit(limit)
         .sort({ createdAt: -1 })
         .select("_id title artist genre videoUrl thumbnailUrl duration createdAt")

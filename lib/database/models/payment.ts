@@ -82,6 +82,5 @@ PaymentSchema.pre("validate", function (next) {
 // 🔹 Index for performance and fraud checks
 PaymentSchema.index({ sender: 1, receiver: 1 });
 PaymentSchema.index({ status: 1 });
-PaymentSchema.index({ reference: 1 }, { unique: true });
 
 export const Payment = models?.Payment || model<IPayment>("Payment", PaymentSchema);
