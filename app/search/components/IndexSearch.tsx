@@ -197,17 +197,17 @@ export default function InteractiveSearchPage(): JSX.Element {
   }, [loaderRef, loading, results.length, total]);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-black text-white pt-12">
+    <main className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 text-neutral-900 dark:from-neutral-950 dark:via-neutral-900 dark:to-black dark:text-white pt-12">
       {/* Header */}
-      <header className="border-b border-white/10">
+      <header className="border-b border-black/10 dark:border-white/10">
         <div className="max-w-7xl mx-auto px-6 py-10 text-center md:text-left">
           <h1 className="text-4xl md:text-5xl font-extrabold">
-            <span className="text-white">LoudEar </span>
+            <span className="text-neutral-900 dark:text-white">LoudEar </span>
             <span className="bg-gradient-to-r from-rose-500 to-purple-600 bg-clip-text text-transparent">
               Search
             </span>
           </h1>
-          <p className="mt-3 text-sm text-gray-400 max-w-2xl">
+          <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
             Discover songs, albums, and videos instantly.
           </p>
         </div>
@@ -218,14 +218,14 @@ export default function InteractiveSearchPage(): JSX.Element {
         <motion.form
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full md:w-3/5 mx-auto border border-white/10 bg-neutral-900/80 backdrop-blur-md rounded-full px-4 py-2 flex items-center gap-2"
+          className="w-full md:w-3/5 mx-auto border border-black/10 bg-white/80 dark:border-white/10 dark:bg-neutral-900/80 backdrop-blur-md rounded-full px-4 py-2 flex items-center gap-2"
         >
           <input
             type="text"
             placeholder="Search songs, artists, albums..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 px-3 py-2 bg-transparent text-sm text-white placeholder-gray-400 focus:outline-none"
+            className="flex-1 px-3 py-2 bg-transparent text-sm text-neutral-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
           />
           {query && (
             <Button
@@ -250,7 +250,7 @@ export default function InteractiveSearchPage(): JSX.Element {
                 className={`px-3 py-1.5 rounded-full text-sm border transition ${
                   type === t
                     ? "bg-white text-black border-transparent"
-                    : "bg-neutral-900 border-white/10 text-gray-400 hover:text-white"
+                    : "bg-white border-black/10 text-gray-600 hover:text-black dark:bg-neutral-900 dark:border-white/10 dark:text-gray-400 dark:hover:text-white"
                 }`}
               >
                 {t[0].toUpperCase() + t.slice(1)}
@@ -263,7 +263,7 @@ export default function InteractiveSearchPage(): JSX.Element {
               aria-label="select-button"
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
-              className="rounded-full bg-neutral-900 border border-white/10 text-sm px-3 py-1.5 text-gray-300"
+              className="rounded-full bg-white border border-black/10 text-sm px-3 py-1.5 text-gray-700 dark:bg-neutral-900 dark:border-white/10 dark:text-gray-300"
             >
               {["All", "Hip Hop", "Pop", "Afrobeat", "RnB", "Gospel"].map((g) => (
                 <option key={g}>{g}</option>
@@ -274,7 +274,7 @@ export default function InteractiveSearchPage(): JSX.Element {
               aria-label="select-button"
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              className="rounded-full bg-neutral-900 border border-white/10 text-sm px-3 py-1.5 text-gray-300"
+              className="rounded-full bg-white border border-black/10 text-sm px-3 py-1.5 text-gray-700 dark:bg-neutral-900 dark:border-white/10 dark:text-gray-300"
             >
               <option value="relevance">Relevance</option>
               <option value="newest">Newest</option>

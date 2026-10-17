@@ -1,179 +1,193 @@
-// Themed BlogPostPage component
-// (Dark/Light theme ready using Tailwind `dark:` classes and CSS variables)
-
-"use client";
-
-import { useParams } from "next/navigation";
-import { motion } from "framer-motion";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { timeAgo } from "@/lib/utils";
-import { blogPosts } from "@/data/blogPosts";
-import ThemedHeading from "@/components/themed-heading";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ArrowRight, Clock } from "lucide-react";
+import { CategoryTag, StoryCard } from "@/components/blog/BlogIndex";
+import { ShareButtons } from "@/components/blog/ShareButtons";
+import AdUnit from "@/components/ads/AdUnit";
+import {
+  blogPosts,
+  formatPostDate,
+  getAdjacentPosts,
+  getPostById,
+  getReadingTime,
+  getRelatedPosts,
+} from "@/data/blogPosts";
 
-// Dummy blog data
-const blogPostsData = [
-  {
-    id: 1,
-    title: "Cleo Ice Queen Drops New Single ‘Power’",
-    excerpt:
-      "The hip hop queen returns with a bold anthem set to dominate the charts this Friday.",
-    image: "/assets/images/cleo-blog01.jpg",
-    date: "Sept 5, 2025",
-    author: "LoudEar Editorial",
-    content: `Cleo Ice Queen makes a powerful comeback with her latest single “Power.”\nThe track blends sharp hip hop lyricism with Afrobeat rhythms, marking her boldest release to date. Fans can expect an empowering anthem.`,
-  },
-  {
-    id: 2,
-    title: "Top 10 Rising African Artists to Watch",
-    excerpt:
-      "From Afrobeat to Hip Hop, here are the hottest acts shaping the future of music.",
-    image: "/assets/images/cleo-07.jpg",
-    date: "Sept 3, 2025",
-    author: "LoudEar Team",
-    content: `Africa’s music scene is exploding with fresh talent across the continent.`,
-  },
-  {
-    id: 3,
-    title: "Inside the Studio: Rich Bizzy’s Creative Process",
-    excerpt: "Go behind the scenes with one of Zambia’s most celebrated hitmakers.",
-    image: "/assets/images/bizzy03.jpg",
-    date: "Sept 1, 2025",
-    author: "LoudEar Features",
-    content: `A rare behind‑the‑scenes look at how hits are made by Rich Bizzy.`,
-  },
-];
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://loudear.com";
 
-export default function BlogPostPage() {
-  const params = useParams();
-  const postId = Number(params?.id);
-  const post = blogPostsData.find((p) => p.id === postId);
+type Params = Promise<{ id: string }>;
 
-  if (!post) {
-    return (
-      <main className="flex items-center justify-center h-screen bg-background text-foreground">
-        <h1 className="text-2xl font-bold">Post not found</h1>
-      </main>
-    );
-  }
+function resolvePost(id: string) {
+  return /^\d+$/.test(id) ? getPostById(Number(id)) : undefined;
+}
 
-  const trendingPosts = blogPostsData.slice(0, 3);
+export function generateStaticParams() {
+  return blogPosts.map((post) => ({ id: String(post.id) }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params;
+}): Promise<Metadata> {
+  const post = resolvePost((await params).id);
+  if (!post) return { title: "Article not found | LoudEar" };
+  return {
+    title: `${post.title} | LoudEar`,
+    description: post.excerpt,
+    keywords: post.tags,
+    openGraph: {
+      type: "article",
+      title: post.title,
+      description: post.excerpt,
+      images: [post.image],
+      publishedTime: post.date.toISOString(),
+      authors: [post.author],
+    },
+    twitter: { card: "summary_large_image", title: post.title },
+  };
+}
+
+export default async function BlogArticlePage({ params }: { params: Params }) {
+  const post = resolvePost((await params).id);
+  if (!post) notFound();
+
+  const related = getRelatedPosts(post);
+  const { newer, older } = getAdjacentPosts(post);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    headline: post.title,
+    description: post.excerpt,
+    image: [`${BASE_URL}${post.image}`],
+    datePublished: post.date.toISOString(),
+    author: { "@type": "Organization", name: post.author },
+    publisher: { "@type": "Organization", name: "LoudEar" },
+    mainEntityOfPage: `${BASE_URL}/blog/${post.id}`,
+  };
 
   return (
-    <main className="bg-background text-foreground transition-colors">
-      {/* HERO */}
-      <section className="relative h-[450px] md:h-[550px] w-full overflow-hidden">
+    <main className="min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+      <div className="relative h-[55vh] min-h-[340px] w-full">
         <Image
           src={post.image}
           alt={post.title}
           fill
-          className="object-cover"
           priority
+          sizes="100vw"
+          className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
-          <div className="max-w-5xl mx-auto px-6 pb-12 text-white drop-shadow-lg">
-            <motion.h1
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6 }}
-              className="text-4xl md:text-6xl font-extrabold leading-tight"
-            >
-              {post.title}
-            </motion.h1>
-            <p className="text-gray-200 mt-2 text-lg md:text-xl">{post.excerpt}</p>
-            <p className="text-gray-300 text-sm mt-1">
-              {timeAgo(post.date)} · {post.author}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* CONTENT + SIDEBAR */}
-      <section className="max-w-7xl mx-auto px-6 md:px-12 py-16 grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* ARTICLE */}
-        <article className="lg:col-span-2 space-y-6 text-gray-700 dark:text-gray-300 leading-relaxed">
-          {post.content
-            .trim()
-            .split("\n")
-            .map((para, i) => (
-              <p key={i} className="text-lg md:text-xl italic opacity-90">
-                {para}
-              </p>
-            ))}
-        </article>
-
-        {/* SIDEBAR */}
-        <aside className="space-y-12">
-          {/* TRENDING */}
+        <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-black/20 dark:from-neutral-950 dark:via-neutral-950/50 dark:to-black/30" />
+        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-3xl space-y-3 px-5 pb-8 sm:px-8">
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-1 text-sm text-neutral-700 hover:text-black dark:text-neutral-300 dark:hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" /> Magazine
+          </Link>
           <div>
-            <ThemedHeading>Trending News</ThemedHeading>
-            <div className="space-y-4">
-              {trendingPosts.map((post) => (
-                <Link key={post.id} href={`/blog/${post.id}`}>
-                  <div className="flex gap-3 items-center cursor-pointer border-b border-gray-200 dark:border-gray-700 pb-3 group">
-                    <div className="relative w-20 h-14 rounded-md overflow-hidden">
-                      <Image
-                        src={post.image}
-                        alt={post.title}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-110"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="text-foreground font-bold line-clamp-2">
-                        {post.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">{post.author}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <CategoryTag label={post.category} />
           </div>
-
-          {/* AD */}
-          <div className="bg-muted h-60 flex items-center justify-center rounded-lg text-muted-foreground">
-            Advertisement
-          </div>
-        </aside>
-      </section>
-
-      {/* RELATED POSTS */}
-      <section className="max-w-7xl mx-auto px-6 md:px-12 pb-16">
-        <ThemedHeading>Related Posts</ThemedHeading>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {blogPosts.slice(2, 5).map((post) => (
-            <Link key={post.id} href={`/blog/${post.id}`}>
-              <div className="overflow-hidden border-b-[4px] border-black dark:border-white bg-white dark:bg-gray-900 transition group shadow-sm">
-                <div className="relative h-52 w-full overflow-hidden">
-                  <Image
-                    src={post.image}
-                    alt={post.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute -bottom-3 right-0 bg-black text-white text-xs px-3 py-1 shadow-lg uppercase tracking-wide">
-                    {post.category}
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-2">
-                  <p className="text-[11px] uppercase font-bold text-muted-foreground tracking-wide">
-                    {post.date.toLocaleDateString?.() ?? post.date} · {post.author}
-                  </p>
-                  <h3 className="text-foreground text-2xl md:text-3xl font-bold line-clamp-2">
-                    {post.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-3">
-                    {post.excerpt}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
+          <h1 className="text-3xl font-extrabold leading-tight sm:text-5xl text-neutral-900 dark:text-white">
+            {post.title}
+          </h1>
+          <p className="flex flex-wrap items-center gap-x-2 text-sm text-neutral-700 dark:text-neutral-300">
+            <span>By {post.author}</span>
+            <span aria-hidden>•</span>
+            <time dateTime={post.date.toISOString()}>
+              {formatPostDate(post.date)}
+            </time>
+            <span aria-hidden>•</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" /> {getReadingTime(post)} min read
+            </span>
+          </p>
         </div>
-      </section>
+      </div>
+
+      <article className="mx-auto max-w-3xl px-5 py-10 sm:px-8">
+        <p className="mb-8 text-lg font-medium text-neutral-700 dark:text-neutral-300">
+          {post.excerpt}
+        </p>
+        <div className="space-y-5 text-base leading-8 text-neutral-800 dark:text-neutral-200">
+          {post.content.map((block, i) =>
+            block.startsWith("## ") ? (
+              <h2 key={i} className="pt-4 text-2xl font-bold text-neutral-900 dark:text-white">
+                {block.slice(3)}
+              </h2>
+            ) : (
+              <p key={i}>{block}</p>
+            )
+          )}
+        </div>
+
+        <ul className="mt-8 flex flex-wrap gap-2" aria-label="Tags">
+          {post.tags.map((tag) => (
+            <li
+              key={tag}
+              className="rounded-full border border-black/15 px-3 py-1 text-xs text-neutral-700 dark:border-white/15 dark:text-neutral-300"
+            >
+              #{tag.replace(/\s+/g, "")}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-8 border-y border-black/10 py-5 dark:border-white/10">
+          <ShareButtons title={post.title} />
+        </div>
+
+        <AdUnit placement="leaderboard" className="my-8" />
+
+        <nav aria-label="More articles" className="grid gap-4 sm:grid-cols-2">
+          {newer ? (
+            <Link
+              href={`/blog/${newer.id}`}
+              className="rounded-xl border border-black/10 p-4 transition hover:border-black/30 dark:border-white/10 dark:hover:border-white/30"
+            >
+              <span className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                <ArrowLeft className="h-3 w-3" /> Newer
+              </span>
+              <span className="mt-1 block font-semibold">{newer.title}</span>
+            </Link>
+          ) : (
+            <span />
+          )}
+          {older && (
+            <Link
+              href={`/blog/${older.id}`}
+              className="rounded-xl border border-black/10 p-4 text-right transition hover:border-black/30 dark:border-white/10 dark:hover:border-white/30"
+            >
+              <span className="flex items-center justify-end gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+                Older <ArrowRight className="h-3 w-3" />
+              </span>
+              <span className="mt-1 block font-semibold">{older.title}</span>
+            </Link>
+          )}
+        </nav>
+      </article>
+
+      {related.length > 0 && (
+        <section
+          aria-label="Related stories"
+          className="mx-auto max-w-7xl px-5 pb-16 sm:px-8"
+        >
+          <h2 className="mb-4 text-xl font-bold">Keep reading</h2>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {related.map((item) => (
+              <StoryCard key={item.id} post={item} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

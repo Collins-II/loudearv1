@@ -7,7 +7,7 @@ import AlbumUploadForm from "@/components/forms/album-upload-form";
 export default function UploadMusicPage() {
 
   return (
-    <main className="bg-gradient-to-t from-white via-neutral-950 to-black min-h-screen pt-8 pb-16 md:px-12 text-white">
+    <main className="bg-background text-foreground min-h-screen pt-8 pb-16 md:px-12">
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}

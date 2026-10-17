@@ -7,7 +7,7 @@ import SingleVideoUploadForm from "@/components/forms/video-upload-form";
 export default function UploadVideosPage() {
 
   return (
-    <main className="bg-gradient-to-t from-black/70 via-black/80 to-black min-h-screen pb-16 pt-8 md:px-12 text-white">
+    <main className="bg-background text-foreground min-h-screen pb-16 pt-8 md:px-12">
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -33,7 +33,7 @@ export default function UploadVideosPage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="w-full bg-neutral-900/40 rounded-2xl border border-neutral-700"
+            className="w-full bg-neutral-100 dark:bg-neutral-900/40 rounded-2xl border border-neutral-300 dark:border-neutral-700"
           >
             <SingleVideoUploadForm
               onSuccess={() => toast.success("Video uploaded successfully!")}

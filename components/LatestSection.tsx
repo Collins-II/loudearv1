@@ -61,7 +61,7 @@ export default function LatestSection({ songs, videos }: SectionProps) {
                   <Link href="/music">
                     <div className="relative flex items-center gap-2 text-md capitalize font-bold text-black tracking-wide w-fit">
                       <span className="relative z-10 pb-1 capitalize">See More</span>
-                      <span className="absolute left-0 bottom-0 w-full h-[2px] bg-black"></span>
+                      <span className="absolute left-0 bottom-0 w-full h-[2px] bg-black dark:bg-white"></span>
                     </div>
                   </Link>
                 </motion.div>
@@ -97,7 +97,7 @@ export default function LatestSection({ songs, videos }: SectionProps) {
                   <Link href="/videos">
                     <div className="relative flex items-center gap-2 text-md capitalize font-bold text-black tracking-wide w-fit">
                       <span className="relative z-10 pb-1 capitalize">See More</span>
-                      <span className="absolute left-0 bottom-0 w-full h-[2px] bg-black"></span>
+                      <span className="absolute left-0 bottom-0 w-full h-[2px] bg-black dark:bg-white"></span>
                     </div>
                   </Link>
                 </motion.div>

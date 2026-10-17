@@ -155,8 +155,8 @@ export default function ArtistsPage() {
         <aside className="space-y-12">
           <div>
             <h3 className="relative text-slate-900 text-2xl font-extrabold mb-6 tracking-tight">
-              <span className="relative z-10 bg-white pr-3">Top Artists</span>
-              <span className="absolute left-0 top-1/2 w-full h-[8px] bg-black -z-0"></span>
+              <span className="relative z-10 bg-background pr-3">Top Artists</span>
+              <span className="absolute left-0 top-1/2 w-full h-[8px] bg-black dark:bg-white -z-0"></span>
             </h3>
             <div className="grid gap-6">
               {artists.slice(0, 5).map((a, index) => {

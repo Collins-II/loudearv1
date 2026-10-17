@@ -7,10 +7,10 @@ export default function ForbiddenPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-center p-8">
       <h1 className="text-5xl font-bold text-destructive mb-4">403</h1>
       <p className="text-muted-foreground mb-8 max-w-md">
-        You don’t have permission to access this page. Please make sure you’re signed in with the correct account.
+        You don&apos;t have permission to access this page. Please make sure you&apos;re signed in with the correct account.
       </p>
       <div className="flex gap-4">
         <Button variant="ghost" onClick={() => router.push("/")}>

@@ -117,11 +117,12 @@ export default function Sidebar({
             {/* NAVIGATION */}
             <nav className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {navItems.map(({ href, label }) => {
-                const active = pathname === href;
+                const active = pathname === href || pathname.startsWith(`${href}/`);
                 return (
                   <Link
                     key={href}
                     href={href}
+                    aria-current={active ? "page" : undefined}
                     onClick={() => setMobileOpen(false)}
                     className={`block text-base font-semibold rounded-md px-2 py-1 transition-colors
                       ${
@@ -147,6 +148,7 @@ export default function Sidebar({
                   {/* Upload Media Dropdown */}
                   <UploadDropdown
                     scrolled={scrolled}
+                    onNavigate={() => setMobileOpen(false)}
                   />
 
 {/* 🔹 User Info Dropdown */}

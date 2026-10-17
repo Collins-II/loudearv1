@@ -74,7 +74,7 @@ export default async function Home() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <NetworkError message="Failed to load content. Please try again later." />
       </div>
     );
@@ -124,7 +124,7 @@ export default async function Home() {
       </noscript>
 
       {/* ---- PAGE UI ---- */}
-      <div className="min-h-screen w-full overflow-x-hidden bg-[radial-gradient(circle_at_10%_0%,#0b0f1a_0%,#05070d_60%,#05060a_100%)] text-white">
+      <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground">
 
         <HeroSection />
 

@@ -19,15 +19,11 @@ export function SiteHeader() {
 
   const pathname = usePathname();
 
-  const pageTitle =
-    pathname === "/dashboard/upload/song"
-      ? "UPLOAD"
-      : pathname === "/dashboard/upload/video"
-      ? "UPLOAD"
-      : pathname === "/dashboard/profile/edit"
-      ? "PROFILE"
-      : pathname === "/dashboard/upload/album"? "UPLOAD"
-      : "";
+  const pageTitle = pathname.startsWith("/studio/dashboard/upload/")
+    ? "UPLOAD"
+    : pathname === "/studio/dashboard/profile/edit"
+    ? "PROFILE"
+    : "";
 
   return (
     <header className="relative flex w-full items-center justify-between overflow-hidden bg-black text-white">

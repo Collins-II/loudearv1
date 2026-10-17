@@ -36,13 +36,13 @@ export default function CalendarView({ events }: CalendarProps) {
     selectedDay !== null ? getEventsForDay(selectedDay) : [];
 
   return (
-    <div className="w-full max-w-5xl mx-auto p-6 bg-gray-900 shadow-xl rounded-2xl text-gray-100">
+    <div className="w-full max-w-5xl mx-auto p-6 bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 shadow-xl rounded-2xl">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <button
           aria-label="previous-month"
           onClick={prevMonth}
-          className="p-2 rounded-full hover:bg-gray-800"
+          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <ChevronLeft className="w-5 h-5 text-indigo-400" />
         </button>
@@ -55,7 +55,7 @@ export default function CalendarView({ events }: CalendarProps) {
         <button
           aria-label="next-month"
           onClick={nextMonth}
-          className="p-2 rounded-full hover:bg-gray-800"
+          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <ChevronRight className="w-5 h-5 text-indigo-400" />
         </button>
@@ -73,7 +73,7 @@ export default function CalendarView({ events }: CalendarProps) {
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-gray-400">
+      <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div key={d} className="uppercase">
             {d}
@@ -107,12 +107,12 @@ export default function CalendarView({ events }: CalendarProps) {
                 ${
                   isToday
                     ? "bg-indigo-900/30 border-indigo-500"
-                    : "bg-gray-800 border-gray-700"
+                    : "bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700"
                 }`}
               >
                 <span
                   className={`absolute top-1 left-1 text-xs ${
-                    isToday ? "text-indigo-400 font-bold" : "text-gray-300"
+                    isToday ? "text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-700 dark:text-gray-300"
                   }`}
                 >
                   {day.date()}
@@ -162,7 +162,7 @@ export default function CalendarView({ events }: CalendarProps) {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-gray-900 rounded-3xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl border border-gray-700"
+              className="bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 rounded-3xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl border border-gray-200 dark:border-gray-700"
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-2xl font-bold text-indigo-400">
@@ -171,7 +171,7 @@ export default function CalendarView({ events }: CalendarProps) {
                 <button
                   aria-label="close"
                   onClick={() => setSelectedDay(null)}
-                  className="text-gray-400 hover:text-indigo-400"
+                  className="text-gray-500 dark:text-gray-400 hover:text-indigo-500"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -181,7 +181,7 @@ export default function CalendarView({ events }: CalendarProps) {
                   selectedDayEvents.map((event) => (
                     <div
                       key={event.id}
-                      className="flex flex-col md:flex-row gap-4 bg-gray-800 rounded-2xl overflow-hidden shadow hover:shadow-lg transition"
+                      className="flex flex-col md:flex-row gap-4 bg-gray-100 dark:bg-gray-800 rounded-2xl overflow-hidden shadow hover:shadow-lg transition"
                     >
                       <div className="relative md:w-1/3 h-40 md:h-auto">
                         <Image
@@ -195,10 +195,10 @@ export default function CalendarView({ events }: CalendarProps) {
                         <h4 className="text-lg font-bold text-indigo-300">
                           {event.title}
                         </h4>
-                        <p className="text-gray-300 text-sm">
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">
                           {event.description}
                         </p>
-                        <div className="flex items-center gap-4 text-gray-400">
+                        <div className="flex items-center gap-4 text-gray-500 dark:text-gray-400">
                           <span className="flex items-center gap-1">
                             <CalendarDays className="w-4 h-4 text-indigo-400" />
                             {new Date(event.date).toLocaleTimeString([], {
@@ -218,7 +218,7 @@ export default function CalendarView({ events }: CalendarProps) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-gray-400 italic">
+                  <p className="text-gray-500 dark:text-gray-400 italic">
                     No events for this day.
                   </p>
                 )}

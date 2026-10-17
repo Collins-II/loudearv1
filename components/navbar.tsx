@@ -7,11 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { Button } from "./ui/button";
 import { X, Search } from "lucide-react";
-import { TbMenu3, TbLoaderQuarter } from "react-icons/tb";
-//import { SiYoutubestudio } from "react-icons/si";
-//import { TbSunMoon } from "react-icons/tb";
+import { TbMenu3 } from "react-icons/tb";
 import SignInButton from "./auth/SignInButton";
-import { toast } from "sonner";
 import NavSidebar from "./sidebar";
 import Image from "next/image";
 import CartSidebar from "./cart-sidebar";
@@ -30,18 +27,20 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [animate, setAnimate] = useState(false);
-  const [onSearch, setOnSearch] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-   useEffect(() => setMounted(true), [mounted]);
 
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
+    handleScroll();
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setMobileSearchOpen(false);
+    setSearchOpen(false);
+  }, [pathname]);
 
   const navItems = [
     { label: "Charts", href: "/charts" },
@@ -54,22 +53,19 @@ export default function Navbar() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setOnSearch(true);
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setOnSearch(false);
-      setSearchQuery("");
-      setSearchOpen(false);
-      setMobileSearchOpen(false);
-      setMobileOpen(false);
-    }
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+    setSearchQuery("");
+    setSearchOpen(false);
+    setMobileSearchOpen(false);
+    setMobileOpen(false);
   };
 
   const handleMediaClick = () => {
     if (!session) {
-      setAnimate(true);
-      toast("You need to sign in first to submit media.");
-      setTimeout(() => setAnimate(false), 800);
+      router.push("/auth?callbackUrl=%2Fstudio%2Fdashboard");
     } else {
       router.push("/studio/dashboard");
       setMobileOpen(false);
@@ -87,7 +83,7 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 md:px-12 flex justify-between items-center h-16">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" aria-label="Loudear home" className="flex items-center gap-2">
           <Image
             src="/assets/logo/logo-bl.jpg"
             alt="Loudear-Logo"
@@ -98,13 +94,15 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-4">
+        <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-4">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`uppercase relative px-2 py-1 text-sm md:text-base font-semibold transition-all ${
                   isActive
                     ? scrolled
@@ -130,13 +128,15 @@ export default function Navbar() {
           {/* 🔍 Search Toggle */}
           <div className="relative">
             <button
-              aria-label="toggle-search"
+              type="button"
+              aria-label={searchOpen ? "Close search" : "Open search"}
+              aria-expanded={searchOpen}
               onClick={() => setSearchOpen((prev) => !prev)}
               className={`p-2 rounded-full transition ${
                 scrolled ? "bg-gray-100 text-gray-800" : "bg-white/20 text-white"
               } hover:scale-105`}
             >
-              {onSearch ? <TbLoaderQuarter size={18} /> : <Search size={18} />}
+              <Search size={18} />
             </button>
 
             <AnimatePresence>
@@ -155,6 +155,7 @@ export default function Navbar() {
                 >
                   <input
                     type="text"
+                    aria-label="Search tracks, videos, and artists"
                     placeholder="Search tracks, videos, artists..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -174,10 +175,20 @@ export default function Navbar() {
           </div>
 
           {/* Studio Button */}
-         <UploadDropdown
-           animate={animate}
-           scrolled={scrolled}
-          />
+          {session ? (
+            <UploadDropdown scrolled={scrolled} />
+          ) : (
+            <Button
+              onClick={handleMediaClick}
+              className={`rounded-full gap-2 uppercase font-semibold shadow-md hover:text-white ${
+                scrolled
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-foreground"
+              }`}
+            >
+              Studio
+            </Button>
+          )}
 
           <SignInButton />
 
@@ -200,17 +211,21 @@ export default function Navbar() {
         {/* Mobile Menu & Search */}
         <div className="lg:hidden flex items-center gap-2">
           <button
-            aria-label="toggle-mobile-search"
+            type="button"
+            aria-label={mobileSearchOpen ? "Close search" : "Open search"}
+            aria-expanded={mobileSearchOpen}
             onClick={() => setMobileSearchOpen((prev) => !prev)}
             className={`p-2 rounded-full transition ${
               scrolled ? "bg-gray-100 text-gray-800" : "bg-white/20 text-white"
             }`}
           >
-            {onSearch ? <TbLoaderQuarter size={18} /> : <Search size={18} />}
+            <Search size={18} />
           </button>
 
           <button
-            aria-label="Toggle Menu"
+            type="button"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
             className={`p-2 transition-colors ${scrolled ? "text-gray-800" : "text-white"}`}
             onClick={() => setMobileOpen((prev) => !prev)}
           >
@@ -249,6 +264,7 @@ export default function Navbar() {
           >
             <input
               type="text"
+              aria-label="Search tracks, videos, and artists"
               placeholder="Search tracks, videos, artists..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

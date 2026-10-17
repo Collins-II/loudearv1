@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,6 @@ import {
   //BarChart3,
   //Wallet,
   Megaphone,
-  BadgeCheck,
   UploadCloud,
   ChevronRight,
 } from "lucide-react";
@@ -31,38 +29,34 @@ import { SiYoutubestudio } from "react-icons/si";
 import Image from "next/image";
 
 interface UploadDropdownProps {
-  animate?: boolean;
   scrolled?: boolean;
+  onNavigate?: () => void;
 }
 
 export default function UploadDropdown({
-  animate = false,
   scrolled = false,
+  onNavigate,
 }: UploadDropdownProps) {
   const router = useRouter();
 
   const navigate = (url: string) => {
     router.push(url);
+    onNavigate?.();
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <motion.div
-          animate={animate ? { x: [-5, 5, -5, 5, 0] } : {}}
-          transition={{ duration: 0.5 }}
+        <Button
+          className={`rounded-full gap-2 uppercase font-semibold shadow-md hover:text-white ${
+            scrolled
+              ? "bg-primary text-primary-foreground"
+              : "bg-background text-foreground"
+          }`}
         >
-          <Button
-            className={`rounded-full gap-2 uppercase font-semibold shadow-md hover:text-white ${
-              scrolled
-                ? "bg-primary text-primary-foreground"
-                : "bg-background text-foreground"
-            }`}
-          >
-            Studio
-            <SiYoutubestudio size={18} />
-          </Button>
-        </motion.div>
+          Studio
+          <SiYoutubestudio size={18} />
+        </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
@@ -93,8 +87,7 @@ export default function UploadDropdown({
           </h3>
 
           <p className="text-xs text-muted-foreground mt-1">
-            Upload content,{/*  manage revenue, analytics,*/}
-            promotions and creator verification.
+            Upload content, promote releases, and manage your studio.
           </p>
         </div>
 
@@ -199,19 +192,11 @@ export default function UploadDropdown({
         </DropdownMenuItem>*/}
 
         <DropdownMenuItem
-          onClick={() => navigate("/creator/promotions")}
+          onClick={() => navigate("/studio/dashboard/admin/promotions")}
           className="cursor-pointer py-3"
         >
           <Megaphone className="mr-3 h-5 w-5 text-pink-500" />
           Promote Content
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={() => navigate("/creator/verification")}
-          className="cursor-pointer py-3"
-        >
-          <BadgeCheck className="mr-3 h-5 w-5 text-sky-500" />
-          Verification Request
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
@@ -219,11 +204,11 @@ export default function UploadDropdown({
         {/* Footer */}
         <div className="p-2">
           <Button
-            onClick={() => navigate("/creator/uploads")}
+            onClick={() => navigate("/studio/dashboard")}
             className="w-full rounded-xl gap-2"
           >
             <UploadCloud size={16} />
-            Manage Uploads
+            Open Studio Dashboard
           </Button>
         </div>
       </DropdownMenuContent>

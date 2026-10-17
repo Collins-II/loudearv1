@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 
 interface PageHeaderProps {
   title: string;
@@ -18,6 +19,8 @@ export function PageHeader({
   actions,
   children,
 }: PageHeaderProps) {
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -57,8 +60,28 @@ export function PageHeader({
             {actions && <div className="mt-5">{actions}</div>}
           </div>
           {children && (
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 lg:justify-end">
-              {children}
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                aria-expanded={filtersOpen}
+                aria-controls="page-header-filters"
+                onClick={() => setFiltersOpen((open) => !open)}
+                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 sm:hidden"
+              >
+                <SlidersHorizontal size={16} aria-hidden="true" />
+                Filters
+                <ChevronDown
+                  size={16}
+                  aria-hidden="true"
+                  className={`transition-transform ${filtersOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              <div
+                id="page-header-filters"
+                className={`${filtersOpen ? "flex" : "hidden"} mt-3 min-w-0 flex-wrap items-center gap-3 sm:mt-0 sm:flex lg:justify-end`}
+              >
+                {children}
+              </div>
             </div>
           )}
         </div>
