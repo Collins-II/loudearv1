@@ -6,6 +6,8 @@ import { Song } from "@/lib/database/models/song";
 import { Album } from "@/lib/database/models/album";
 import { Video } from "@/lib/database/models/video";
 import Beat from "@/lib/database/models/beat";
+import { Interaction } from "@/lib/database/models/interactions";
+import { canAccessMedia } from "@/lib/media-access";
 
 // ✅ Model map
 const modelMap = { Song, Album, Video, Beat } as const;
@@ -59,7 +61,7 @@ export async function POST(
     const Model = modelMap[model];
     await connectToDatabase();
     const doc = await Model.findById(id);
-    if (!doc) {
+    if (!doc || !canAccessMedia(doc, String(user._id))) {
       return NextResponse.json({ success: false, error: `${model} not found` }, { status: 404 });
     }
 
@@ -92,6 +94,19 @@ export async function POST(
     }
 
     if (updated) await doc.save();
+
+    // Mirror into the Interaction collection that feeds the studio charts (beats aren't a chart target)
+    if (model !== "Beat") {
+      const wasLike = type === "like";
+      const nowLiked = doc.likes?.some((u: any) => String(u) === String(userId));
+      if (wasLike && !nowLiked) {
+        await Interaction.deleteMany({ user: userId, targetModel: model, targetId: doc._id, type: "like" });
+      } else if (updated) {
+        await Interaction.create({ user: userId, targetModel: model, targetId: doc._id, type }).catch((err: unknown) =>
+          console.error("[INTERACTION_LOG_ERROR]", err)
+        );
+      }
+    }
 
     const counts = {
       likes: doc.likes?.length ?? 0,

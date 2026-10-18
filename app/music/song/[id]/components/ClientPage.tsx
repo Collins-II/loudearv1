@@ -6,7 +6,6 @@ import { getSocket } from "@/lib/socketClient";
 import { SongSerialized } from "@/actions/getItemsWithStats";
 import CustomPlayer from "@/components/music/CustomPlayer";
 import ShareModal from "@/components/modals/ShareModal";
-import { PageHeader } from "@/components/PageHeader";
 import DetailsHero from "@/components/details/DetailsHero";
 import HorizontalSlider from "@/components/sliders/HorizontalSlider";
 import { SliderCard } from "@/components/sliders/SliderCard";
@@ -20,6 +19,10 @@ import type { User as UserType } from "next-auth";
 import MonetizedDownloadSheet from "@/components/modals/DownloadModal";
 import AdUnit from "@/components/ads/AdUnit";
 import AddToPlaylistButton from "@/components/playlist/AddToPlaylistButton";
+import { Button } from "@/components/ui/button";
+import { ListPlus } from "lucide-react";
+import { useGlobalPlayer } from "@/hooks/useGlobalPlayer";
+import type { QueueTrack } from "@/lib/store/audioSlice";
 
 /**
  * Design goals:
@@ -50,6 +53,15 @@ export default function ClientPage({ data, relatedSongs }: ClientPageProps) {
   const [shareOpen, setShareOpen] = useState(false);
   const [monetizedDownloadOpen, setMonetizedDownloadOpen] = useState(false); // NEW
   const [downloading, setDownloading ] = useState(false);
+  const { enqueue } = useGlobalPlayer();
+  const queueTrack: QueueTrack = {
+    id: data._id,
+    url: data.fileUrl,
+    title: data.title,
+    artist: data.artist,
+    coverUrl: data.coverUrl,
+    model: "Song",
+  };
   
 
   // socket: synchronize live counts and userLiked state
@@ -144,11 +156,6 @@ export default function ClientPage({ data, relatedSongs }: ClientPageProps) {
 
   return (
     <>
-    <PageHeader
-      eyebrow="Music • Song"
-      title="Song Details"
-      description={`Listen to ${data.title} by ${data.artist}, download it and join the conversation.`}
-    />
     <main className="bg-white dark:bg-black text-gray-900 dark:text-gray-100 pt-8 pb-12 px-4 md:px-8 lg:px-12">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6">
        
@@ -178,6 +185,7 @@ export default function ClientPage({ data, relatedSongs }: ClientPageProps) {
           />
           {/* Player */}
             <CustomPlayer
+              id={data._id}
               src={data.fileUrl}
               title={data.title}
               artist={data.artist}
@@ -196,6 +204,11 @@ export default function ClientPage({ data, relatedSongs }: ClientPageProps) {
             handleInteraction={() => handleInteraction("like")}
           />
           <AddToPlaylistButton songId={data._id} />
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => enqueue(queueTrack)}>
+              <ListPlus className="mr-2 h-4 w-4" /> Add to queue
+            </Button>
+          </div>
           <ViewStats current={data.viewCount} previous={data.previousViewCount as number} />
         </div> 
 

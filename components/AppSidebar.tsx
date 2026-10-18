@@ -7,8 +7,8 @@ import {
   Disc3,
   Video,
   Music3Icon,
-  DollarSign,
-  Wallet2,
+  //DollarSign,
+  //Wallet2,
   TrendingUpDown,
   UserRound,
   TrendingUp,
@@ -34,7 +34,7 @@ import { usePathname } from "next/navigation";
 
 import { useSession } from "next-auth/react";
 import { NavUser } from "./nav-user";
-import { TbMoneybag } from "react-icons/tb";
+//import { TbMoneybag } from "react-icons/tb";
 //import Image from "next/image";
 
 const items = [
@@ -45,10 +45,10 @@ const items = [
   },
   {
     title: "Charts",
-    url: "/charts",
+    url: "/studio/dashboard/admin/charts",
     icon: BarChart3,
   },
-  {
+  /*{
     title: "Monetization",
     url: "/studio/dashboard/admin/monetization",
     icon: DollarSign,
@@ -62,7 +62,7 @@ const items = [
     title: "Royalties",
     url: "/studio/dashboard/admin/royalty-splits",
     icon: TbMoneybag,
-  },
+  },*/
     {
     title: "Marketing",
     url: "/studio/dashboard/admin/marketing",

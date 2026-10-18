@@ -109,6 +109,7 @@ export default function PlaylistDetailPage() {
         artist: track.artist,
         coverUrl: track.coverUrl,
         id: track.id,
+        model: "Song" as const,
       })),
       startIndex,
     }));
@@ -264,8 +265,7 @@ export default function PlaylistDetailPage() {
                 {playlist.isOwner && <>
                   <button type="button" disabled={index === 0} onClick={() => { const next = [...tracks]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; updateTracks(next); }} className="hidden h-8 w-7 place-items-center text-neutral-600 dark:text-white/35 hover:text-neutral-900 dark:hover:text-white disabled:opacity-20 group-hover:grid" aria-label={`Move ${track.title} up`} title="Move up"><ArrowUp size={15} /></button>
                   <button type="button" disabled={index === tracks.length - 1} onClick={() => { const next = [...tracks]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; updateTracks(next); }} className="hidden h-8 w-7 place-items-center text-neutral-600 dark:text-white/35 hover:text-neutral-900 dark:hover:text-white disabled:opacity-20 group-hover:grid" aria-label={`Move ${track.title} down`} title="Move down"><ArrowDown size={15} /></button>
-                  <button type="button" onClick={() => updateTracks(tracks.filter((item) => item.id !== track.id))} className="grid h-8 w-7 place-items-center text-neutral-600 dark:text-white/35 hover:text-rose-600 dark:hover:text-rose-300 sm:hidden sm:group-hover:grid" aria-label={`Remove ${track.title}`} title="Remove song"><X size={15} /></button>
-                  <button type="button" onClick={() => updateTracks(tracks.filter((item) => item.id !== track.id))} className="hidden h-8 w-7 place-items-center text-neutral-600 dark:text-white/35 hover:text-rose-600 dark:hover:text-rose-300 sm:group-hover:grid" aria-label={`Remove ${track.title}`} title="Remove song"><X size={15} /></button>
+                  <button type="button" onClick={() => updateTracks(tracks.filter((_, i) => i !== index))} className="grid h-8 w-7 place-items-center text-neutral-600 hover:text-rose-600 focus:opacity-100 dark:text-white/35 dark:hover:text-rose-300 sm:opacity-0 sm:group-hover:opacity-100" aria-label={`Remove ${track.title}`} title="Remove song"><X size={15} /></button>
                 </>}
               </div>
             </div>;

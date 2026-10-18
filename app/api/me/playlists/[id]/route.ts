@@ -27,7 +27,7 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
     const user = await getCurrentUser();
     const populatedOwner = playlistRecord.owner;
-    const isOwner = Boolean(user && String(populatedOwner._id) === user._id);
+    const isOwner = Boolean(user && populatedOwner && String(populatedOwner._id) === String(user._id));
     if (playlistRecord.visibility === "private" && !isOwner) {
       return NextResponse.json({ error: "This playlist is private." }, { status: 403 });
     }
@@ -35,7 +35,8 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
     const songIds = playlistRecord.tracks.map((entry) => entry.song);
     const songs = await Song.find({
       _id: { $in: songIds },
-      $or: [{ visibility: "public" }, ...(user ? [{ author: user._id }] : [])],
+      // Listeners only see public songs; owners also keep their own private ones
+      $or: [{ visibility: "public" }, ...(isOwner && user ? [{ author: user._id }] : [])],
     })
       .select("title artist coverUrl fileUrl duration author")
       .lean();

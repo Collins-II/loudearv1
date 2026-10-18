@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/actions/getCurrentUser";
 import { connectToDatabase } from "@/lib/database";
 import { Comment } from "@/lib/database/models/comment";
+import { Interaction } from "@/lib/database/models/interactions";
+import { loadAccessibleMedia } from "@/lib/media-access";
 
 const MODELS = ["Song", "Album", "Video", "Post"] as const;
 const MAX_LENGTH = 1000;
@@ -33,6 +35,10 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
+    if (model !== "Post" && !(await loadAccessibleMedia(model, id, String(user._id)))) {
+      return NextResponse.json({ error: "Media not found" }, { status: 404 });
+    }
+
     if (parent) {
       const parentComment = Types.ObjectId.isValid(parent)
         ? await Comment.findOne({ _id: parent, targetModel: model, targetId: id })
@@ -56,6 +62,17 @@ export async function POST(req: Request) {
       await Comment.findByIdAndUpdate(parent, {
         $push: { replies: newComment._id },
       });
+    }
+
+    // Feed the studio charts (Post comments aren't chartable media)
+    if (model !== "Post") {
+      await Interaction.create({
+        user: user._id,
+        targetModel: model,
+        targetId: id,
+        type: "comment",
+        metadata: { commentId: String(newComment._id) },
+      }).catch((err: unknown) => console.error("[INTERACTION_LOG_ERROR]", err));
     }
 
     const populated = await Comment.findById(newComment._id)

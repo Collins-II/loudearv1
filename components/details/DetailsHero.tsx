@@ -68,7 +68,7 @@ export default function DetailsHero({
 
   return (
     <div className="italic bg-white dark:bg-neutral-900 dark:border-white/5 overflow-hidden">
-      <div className="md:flex items-center gap-6 py-6">
+      <div className="md:flex items-center gap-6 p-6">
         {/* Cover */}
         <div className="w-full md:w-80 flex-shrink-0">
           <div className="relative w-full h-80 rounded-xl overflow-hidden bg-gray-100 dark:bg-neutral-800">

@@ -13,6 +13,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import User from "@/lib/database/models/user";
 import Beat from "@/lib/database/models/beat";
 import { Interaction } from "@/lib/database/models/interactions";
+import { getCurrentUser } from "@/actions/getCurrentUser";
 dayjs.extend(isoWeek);
 
 /* ------------------------------------------------------------------ */
@@ -338,8 +339,38 @@ export async function incrementInteraction(
     share: "shares",
   };
 
+  // Mirror each action into the Interaction collection that feeds the studio charts.
+  // Beats are not a valid Interaction target, and events need a user.
+  let actorId = userId;
+  if (!actorId && type === "view") {
+    const viewer = await getCurrentUser().catch(() => null);
+    if (viewer?._id) actorId = String(viewer._id);
+  }
+  const trackable = model !== "Beat" && !!actorId && Types.ObjectId.isValid(actorId);
+  const logInteraction = async (interactionType: "view" | "like" | "download" | "share") => {
+    if (!trackable) return;
+    try {
+      await Interaction.create({
+        user: new Types.ObjectId(actorId),
+        targetModel: model,
+        targetId: new Types.ObjectId(id),
+        type: interactionType,
+      });
+    } catch (err) {
+      console.error("[INTERACTION_LOG_ERROR]", err);
+    }
+  };
+
   if (type === "unlike") {
     await Model.updateOne({ _id: id }, { $pull: { likes: new Types.ObjectId(userId) } });
+    if (trackable) {
+      await Interaction.deleteMany({
+        user: new Types.ObjectId(userId),
+        targetModel: model,
+        targetId: new Types.ObjectId(id),
+        type: "like",
+      });
+    }
     return { success: true, action: "unliked" as const };
   }
 
@@ -352,6 +383,7 @@ export async function incrementInteraction(
         { $addToSet: { views: new Types.ObjectId(userId) } }
       );
     }
+    await logInteraction("view");
     await ViewAnalytics.updateOne(
       { itemId: id, contentModel: model, week: nowWeek },
       { $inc: { views: 1 } },
@@ -364,7 +396,9 @@ export async function incrementInteraction(
   const field = fieldMap[type];
   if (!field) throw new Error(`Unsupported interaction type: ${type}`);
 
-  await Model.updateOne({ _id: id }, { $addToSet: { [field]: new Types.ObjectId(userId) } });
+  const updated = await Model.updateOne({ _id: id }, { $addToSet: { [field]: new Types.ObjectId(userId) } });
+  // addToSet is idempotent per user, so only log when the set actually changed
+  if (updated.modifiedCount > 0) await logInteraction(type as "like" | "download" | "share");
 
   if (["like", "share", "download"].includes(type)) {
     if (Math.random() < 0.1) {

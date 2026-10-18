@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socketClient";
 import { VideoSerialized } from "@/actions/getItemsWithStats";
-import { PageHeader } from "@/components/PageHeader";
 import DetailsHero from "@/components/details/DetailsHero";
 import ShareModal from "@/components/modals/ShareModal";
 import VideoPlayer from "@/components/video/VideoPlayer";
@@ -107,11 +106,6 @@ export default function VideoPage({ data, relatedVideos }: VideoPageProps) {
 
   return (
     <>
-    <PageHeader
-      eyebrow="Videos"
-      title="Video Details"
-      description={`Watch ${data.title} by ${data.artist} and join the conversation.`}
-    />
     <main className="bg-white dark:bg-black text-gray-900 dark:text-gray-100 pt-8 pb-12 px-4 md:px-8 lg:px-12">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6">
 
